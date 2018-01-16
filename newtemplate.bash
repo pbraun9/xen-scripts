@@ -13,7 +13,7 @@ archive=$guest.`date +%s`.tar.gz
 [[ ! -d $guest/ ]] && echo $guest/ not found && exit 1
 
 du -h $guest/
-echo -n tar cSf $archive $guest/...
+echo -n tar czSf $archive $guest/...
 time tar czSf $archive $guest/ && echo done
 #time tar cSf $archive $guest/ && echo done
 du -h $archive
