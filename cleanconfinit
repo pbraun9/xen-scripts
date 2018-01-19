@@ -1,0 +1,3 @@
+#!/bin/bash
+echo -n mv $1 $1.dist && cleanconf $1.dist...
+mv $1 $1.dist && cleanconf $1.dist > $1 && echo done
