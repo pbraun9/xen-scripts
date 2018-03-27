@@ -18,8 +18,8 @@ template=${archive%%\.*}
 [[ -f $template ]] && echo $template already exists BUT AS A FILE! && exit 1
 
 du -h $archive
-echo -n tar xSf $archive...
-time tar xSf $archive && echo done
+echo -n tar xSf $archive -C /data/guests/...
+time tar xSf $archive -C /data/guests/ && echo done
 du -h $template/
 
 cat <<EOF

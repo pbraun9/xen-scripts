@@ -7,13 +7,13 @@ set -e
 
 #removing the possible trailing slash
 guest=${1%/}
-archive=$guest.`date +%s`.tar.gz
-#archive=$guest.`date +%s`.tar
+tpl=/data/templates
+archive=$tpl/$guest.`date +%s`.tar
 
 [[ ! -d $guest/ ]] && echo $guest/ not found && exit 1
 
 du -h $guest/
 echo -n tar cSf $archive $guest/...
-time tar czSf $archive $guest/ && echo done
-#time tar cSf $archive $guest/ && echo done
+time tar cSf $archive $guest/ && echo done
 du -h $archive
+

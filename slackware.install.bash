@@ -17,3 +17,9 @@ for set in a ap d f l n; do
 	done; unset pkg
 done; unset set
 
+echo -n ROOT=$slackmount removepkg ModemManager...
+ROOT=$slackmount removepkg ModemManager >/dev/null && echo done
+
+echo -n ROOT=$slackmount removepkg NetworkManager...
+ROOT=$slackmount removepkg NetworkManager >/dev/null && echo done
+
