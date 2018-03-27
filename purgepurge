@@ -1,0 +1,4 @@
+#!/bin/bash
+echo -n purging...
+dpkg -l | grep ^rc | awk '{print $2}' | xargs dpkg --purge && echo done
+

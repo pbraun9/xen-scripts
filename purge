@@ -1,0 +1,4 @@
+#!/bin/bash
+apt -y autoremove
+dpkg -l | grep ^rc | awk '{print $2}'
+
