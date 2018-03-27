@@ -1,0 +1,18 @@
+#!/bin/bash
+
+for component in nova neutron bridge; do
+	[[ $component = bridge ]] && filefix=/etc/neutron/plugins/ml2/linuxbridge_agent.ini \
+	|| filefix=/etc/$component/$component.conf
+	echo -n $filefix...
+	cleanconf $filefix.dist > $filefix && echo done
+	[[ ! -d $component/ ]] && echo conf folder ./$component/ not found && exit 1
+	cd $component/
+	for conf in *; do
+		while read line; do
+			openstackconfadd $conf "$line" $filefix
+		done < $conf
+	done; unset conf
+	cd ../
+	unset filefix
+done; unset component
+
