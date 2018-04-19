@@ -20,7 +20,7 @@ template=${archive%%\.*}
 du -h $archive
 echo -n tar xzSf $archive -C /data/guests/...
 time tar xzSf $archive -C /data/guests/ && echo done
-du -h $template/
+du -h /data/guests/$template/
 
 cat <<EOF
 
