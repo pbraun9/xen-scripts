@@ -4,7 +4,7 @@ repo=/data/media/slackware/142
 slackmount=/tmp/slack
 dummy=0
 
-for set in a ap d f l n; do
+for set in a ap d f n; do
 	for pkg in `grep :ADD$ $repo/$set/tagfile | cut -f1 -d:`; do
 	        #egrep "^$repo/$set/$pkg-[[:alnum:]\._]+-[[:alnum:]_]+-[[:digit:]]+.txz$"
 		pkgfix=`echo $pkg | sed 's/+/\\\+/g'`
@@ -18,8 +18,17 @@ for set in a ap d f l n; do
 	done; unset pkg
 done; unset set
 
-for pkg in ModemManager NetworkManager; do
-	echo -n ROOT=$slackmount removepkg $pkg...
-	ROOT=$slackmount removepkg $pkg >/dev/null && echo done
-done; unset pkg
+#was required when REC was used
+#for pkg in ModemManager NetworkManager; do
+#	echo -n ROOT=$slackmount removepkg $pkg...
+#	ROOT=$slackmount removepkg $pkg >/dev/null && echo done
+#done; unset pkg
+
+#seems that gnupg1 is rather used, although marked as OPT in the tagfile
+#installpkg --root /tmp/slack/ slackware64/n/gnupg2-2.0.30-x86_64-1.txz
+#installpkg --root /tmp/slack/ slackware64/n/wget-1.18-x86_64-1.txz
+
+#64 14.2 specific sorry
+installpkg --root /tmp/slack/ $repo/n/openssh-7.2p2-x86_64-1.txz
+installpkg --root /tmp/slack/ $repo/ap/slackpkg-2.82.1-noarch-3.txz
 

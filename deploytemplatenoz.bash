@@ -20,12 +20,13 @@ template=${archive%%\.*}
 du -h $archive
 echo -n tar xSf $archive -C /data/guests/...
 time tar xSf $archive -C /data/guests/ && echo done
-du -h $template/
+du -h /data/guests/$template/
 
 cat <<EOF
 
 you should now run,
 
+	cd /data/guests/
 	renameguest.bash $template NEW-NAME
 
 EOF
