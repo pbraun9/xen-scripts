@@ -26,6 +26,7 @@ cat <<EOF
 
 you should now run,
 
+        cd /data/guests/
 	renameguest.bash $template NEW-NAME
 
 EOF
