@@ -5,6 +5,8 @@
 guest=$1
 dump=/data/dumps/dump.`date +%s`.dumpcore
 
+mkdir -p /data/dumps
+
 echo -n dumping $guest memory to $dump...
 xl dump-core $guest $dump && echo done
 
