@@ -47,6 +47,7 @@ echo renaming the disks, images and swap files:
 newdisk disk
 newdisk qcow2
 newdisk ext4
+newdisk xfs
 newdisk img
 newdisk swap
 
