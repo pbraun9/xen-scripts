@@ -18,18 +18,12 @@ for set in a ap d f n; do
 	done; unset pkg
 done; unset set
 
+echo getting rid of bluez...
+removepkg ROOT=$slackmount bluez && echo done
+
 #was required when REC was used
 #for pkg in ModemManager NetworkManager; do
 #	echo -n ROOT=$slackmount removepkg $pkg...
 #	ROOT=$slackmount removepkg $pkg >/dev/null && echo done
 #done; unset pkg
-
-#seems that gnupg1 is rather used, although marked as OPT in the tagfile
-#installpkg --root /tmp/slack/ slackware64/n/gnupg2-2.0.30-x86_64-1.txz
-#installpkg --root /tmp/slack/ slackware64/n/wget-1.18-x86_64-1.txz
-
-#64 14.2 specific sorry
-installpkg --root $slackmount $repo/ap/slackpkg-2.82.1-noarch-3.txz
-installpkg --root $slackmount $repo/n/dhcpcd-6.8.2-x86_64-2.txz
-installpkg --root $slackmount $repo/n/openssh-7.2p2-x86_64-1.txz
 
