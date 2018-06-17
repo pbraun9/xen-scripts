@@ -12,6 +12,11 @@ echo LINUX VERSIONS
 dsh -e -g cluster "uname -r"
 echo ''
 
+echo FILE-SYSTEMS
+#dsh -e -g cluster "file -sL /dev/sda1"
+dsh -e -g cluster "mount | egrep '(^/dev|type nfs[^d])'"
+echo ''
+
 echo MEMORY \(MB\)
 dsh -e -g cluster "free -m | grep ^Mem"
 echo ''
