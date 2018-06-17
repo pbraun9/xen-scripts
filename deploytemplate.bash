@@ -18,15 +18,15 @@ template=${archive%%\.*}
 [[ -f $template ]] && echo $template already exists BUT AS A FILE! && exit 1
 
 du -h $archive
-echo -n tar xzSf $archive -C /data/guests/...
-time tar xzSf $archive -C /data/guests/ && echo done
+echo -n tar xSf $archive -C /data/guests/...
+time tar xSf $archive -C /data/guests/ && echo done
 du -h /data/guests/$template/
 
 cat <<EOF
 
 you should now run,
 
-        cd /data/guests/
+	cd /data/guests/
 	renameguest.bash $template NEW-NAME
 
 EOF

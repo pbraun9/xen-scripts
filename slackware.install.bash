@@ -1,7 +1,7 @@
 #!/bin/bash
 
-repo=/data/media/slackware/142
-slackmount=/tmp/slack
+repo=/data/kernels/slackware142
+slackmount=lala
 dummy=0
 
 for set in a ap d f n; do
@@ -13,7 +13,7 @@ for set in a ap d f n; do
 		(( `echo $pkgfile | wc -l` != 1 )) && echo "too much results for $pkg:\n$pkgfile" && exit 1
 		echo -n installpkg --root $slackmount $pkgfile...
 		(( $dummy == 0 )) && installpkg --root $slackmount $pkgfile >/dev/null && echo done
-		(( $dummy == 1 )) && echo \(dummy\)
+		(( $dummy == 1 )) && echo \(dummy mode\)
 		unset pkgfix pkgfile
 	done; unset pkg
 done; unset set
@@ -29,6 +29,7 @@ done; unset set
 #installpkg --root /tmp/slack/ slackware64/n/wget-1.18-x86_64-1.txz
 
 #64 14.2 specific sorry
-installpkg --root /tmp/slack/ $repo/n/openssh-7.2p2-x86_64-1.txz
-installpkg --root /tmp/slack/ $repo/ap/slackpkg-2.82.1-noarch-3.txz
+installpkg --root $slackmount $repo/ap/slackpkg-2.82.1-noarch-3.txz
+installpkg --root $slackmount $repo/n/dhcpcd-6.8.2-x86_64-2.txz
+installpkg --root $slackmount $repo/n/openssh-7.2p2-x86_64-1.txz
 
