@@ -15,6 +15,7 @@ installpkgname() {
 	unset pkgfix pkgfile
 }
 
+echo INSTALLING TAG ADD FROM SET A AP
 # d f
 for set in a ap; do
 	for pkg in `grep :ADD$ $repo/$set/tagfile | cut -f1 -d:`; do
@@ -24,8 +25,15 @@ done; unset set
 echo ''
 
 #gnutls
+echo INTSALLING FEW PACKAGES FROM SET N
 set=n
-for pkg in iputils net-tools network-scripts; do
+for pkg in \
+	iputils \
+	net-tools \
+	network-scripts \
+	openssh \
+	; do
 	installpkgname
 done; unset pkg
 echo ''
+
