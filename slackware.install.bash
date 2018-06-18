@@ -8,8 +8,8 @@ installpkgname() {
 	pkgfix=`echo $pkg | sed 's/+/\\\+/g'`
 	pkgfile=`find $repo/ -type f | egrep "^$repo/$set/$pkgfix-[^-]+-[^-]+-[^-]+.txz$"`
 	[[ -z $pkgfile ]] && echo no txz archive found for $pkg && exit 1
-	(( `echo $pkgfile | wc -l` != 1 )) \
-		&& echo "too much results for $pkg:\n$pkgfile" && exit 1
+	(( `echo "$pkgfile" | wc -l` != 1 )) \
+		&& printf "too much results for $pkg:\n$pkgfile\n" && exit 1
 	echo -n installpkg --root $slackmount $pkgfile...
 	installpkg --root $slackmount $pkgfile >/dev/null && echo done
 	unset pkgfix pkgfile
