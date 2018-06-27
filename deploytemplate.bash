@@ -1,11 +1,9 @@
 #!/bin/bash
 set -e
 
-# to be executed in folder /data/guests/
-
 function usage {
 	cat <<-EOF
-	usage: $0 template.tar.gz
+	usage: $0 template.tar
 	EOF
 	exit 1
 }
@@ -14,19 +12,20 @@ function usage {
 archive=$1
 template=${archive%%\.*}
 
+cd /data/templates/
+
 [[ -d $template/ ]] && echo $template/ already exists! && exit 1
 [[ -f $template ]] && echo $template already exists BUT AS A FILE! && exit 1
 
-du -h $archive
+du -k $archive
 echo -n tar xSf $archive -C /data/guests/...
 time tar xSf $archive -C /data/guests/ && echo done
-du -h /data/guests/$template/
+du -sk /data/guests/$template/
 
 cat <<EOF
 
-you should now run,
+You should now run,
 
-	cd /data/guests/
 	renameguest.bash $template NEW-NAME
 
 EOF

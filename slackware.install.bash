@@ -3,30 +3,48 @@
 repo=/data/kernels/slackware142
 slackmount=lala
 
+usage() {
+	cat <<-EOF
+usage: $0 <ADD|REC|OPT> [check]
+EOF
+	exit 1
+}
+
+[[ -z $1 ]] && usage
+target=$1
+[[ $target != ADD && $target != REC && $target != OPT ]] && usage
+
+[[ $2 = check ]] && check=1
+
+#[a-z]+ to get to packages/
 installpkgname() {
-	#egrep "^$repo/$set/$pkg-[[:alnum:]\._]+-[[:alnum:]_]+-[[:digit:]]+.txz$"
+	#egrep "^$repo/[a-z]+/$pkg-[[:alnum:]\._]+-[[:alnum:]_]+-[[:digit:]]+.txz$"
 	pkgfix=`echo $pkg | sed 's/+/\\\+/g'`
-	pkgfile=`find $repo/ -type f | egrep "^$repo/$set/$pkgfix-[^-]+-[^-]+-[^-]+.txz$"`
+	pkgfile=`find $repo/ -type f | egrep "^$repo/[a-z]+/$pkgfix-[^-]+-[^-]+-[^-]+.txz$"`
 	[[ -z $pkgfile ]] && echo no txz archive found for $pkg && exit 1
 	(( `echo "$pkgfile" | wc -l` != 1 )) \
-		&& printf "too much results for $pkg:\n$pkgfile\n" && exit 1
-	echo -n installpkg --root $slackmount $pkgfile...
-	installpkg --root $slackmount $pkgfile >/dev/null && echo done
+		&& printf "too much results for $pkg:\n$pkgfile\n" && [[ -z $check ]] && exit 1
+	if [[ -z $check ]]; then
+		echo -n installpkg --root $slackmount $pkgfile...
+		installpkg --root $slackmount $pkgfile >/dev/null && echo done
+	fi
 	unset pkgfix pkgfile
 }
 
-echo INSTALLING TAG ADD FROM SET A AP
-# d f
-for set in a ap; do
-	for pkg in `grep :ADD$ $repo/$set/tagfile | cut -f1 -d:`; do
+echo INSTALLING TAG $target FROM SET A AP D
+for set in a ap d; do
+	[[ $target = ADD ]] && lalapkg=`grep :ADD$ $repo/$set/tagfile | cut -f1 -d:`
+	[[ $target = REC ]] && lalapkg=`egrep ':ADD$|:REC$' $repo/$set/tagfile | cut -f1 -d:`
+	[[ $target = OPT ]] && lalapkg=`egrep ':ADD$|:REC$|:OPT$' $repo/$set/tagfile | cut -f1 -d:`
+	for pkg in $lalapkg; do
 		installpkgname
 	done; unset pkg
+	unset lalapkg
 done; unset set
 echo ''
 
 #gnutls
 echo INTSALLING FEW PACKAGES FROM SET N
-set=n
 for pkg in \
 	iputils \
 	net-tools \

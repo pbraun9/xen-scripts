@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-# to be executed in folder /data/guests/
+[[ -z $1 ]] && echo what guest? && exit 1
 
-[[ -z $1 ]] && echo \$1 missing && exit 1
+cd /data/guests/
 
 #removing the possible trailing slash
 guest=${1%/}
@@ -12,8 +12,8 @@ archive=$tpl/$guest.`date +%s`.tar
 
 [[ ! -d $guest/ ]] && echo $guest/ not found && exit 1
 
-du -h $guest/
+du -sk $guest/
 echo -n tar cSf $archive $guest/...
 time tar cSf $archive $guest/ && echo done
-du -h $archive
+du -k $archive
 
