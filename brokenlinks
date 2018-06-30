@@ -1,0 +1,11 @@
+#!/bin/bash
+
+urls=`curl -s nethence.com | egrep -o 'http[s]?://[^ "<$]+' | sort -u`
+
+# beware of the carriage return after 200 OK
+for url in $urls; do
+	header=`curl -s -Il $url | head -1`
+	[[ "$header" != "HTTP/1.1 200 OK" ]] && echo $url ${header}
+	unset header
+done; unset url
+
