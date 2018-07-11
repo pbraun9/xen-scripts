@@ -28,3 +28,9 @@ for url in $urls; do
 	unset header
 done; unset url
 
+#https://stackoverflow.com/questions/18488270/how-to-check-the-first-character-in-a-string-in-unix
+
+#alternative
+#wget --spider -r --relative -nd -nv doc.nethence.com
+#-l9
+#https://www.digitalocean.com/community/tutorials/how-to-find-broken-links-on-your-website-using-wget-on-debian-7
