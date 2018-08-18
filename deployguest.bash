@@ -22,11 +22,11 @@ echo -n tar xSf $archive -C /data/guests/...
 time tar xSf $archive -C /data/guests/ && echo done
 du -sk /data/guests/$template/
 
-cat <<EOF
-
-You should now run,
-
-	renameguest.bash $template NEW-NAME
-
-EOF
+#cat <<EOF
+#
+#You should now run,
+#
+#	renameguest.bash $template NEW-NAME
+#
+#EOF
 
