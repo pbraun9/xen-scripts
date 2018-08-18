@@ -1,6 +1,10 @@
 #!/bin/bash
 
 iptables -F
+#iptables -F INPUT
+#iptables -F FORWARD
+#iptables -F OUTPUT
+
 iptables -F -t nat
 iptables -F -t mangle
 iptables -X
