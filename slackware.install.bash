@@ -1,7 +1,9 @@
 #!/bin/bash
 
-repo=/data/kernels/slackware142
+repo=/tftpboot/slackware142/slackware64
 slackmount=lala
+
+[[ ! -d $repo ]] && echo $repo/ not found && exit 1
 
 usage() {
 	cat <<-EOF
@@ -31,8 +33,8 @@ installpkgname() {
 	unset pkgfix pkgfile
 }
 
-echo INSTALLING TAG $target FROM SET A AP D
-for set in a ap d; do
+echo INSTALLING TAG --- $target --- FROM SETS A AP
+for set in a ap; do
 	[[ $target = ADD ]] && lalapkg=`grep :ADD$ $repo/$set/tagfile | cut -f1 -d:`
 	[[ $target = REC ]] && lalapkg=`egrep ':ADD$|:REC$' $repo/$set/tagfile | cut -f1 -d:`
 	[[ $target = OPT ]] && lalapkg=`egrep ':ADD$|:REC$|:OPT$' $repo/$set/tagfile | cut -f1 -d:`
@@ -54,4 +56,40 @@ for pkg in \
 	installpkgname
 done; unset pkg
 echo ''
+
+echo INTSALLING ADD+SLACKPKG
+for pkg in \
+	which \
+	dialog \
+	slackpkg \
+        ncurses \
+        gnupg \
+        wget \
+        libunistring \
+	; do
+	installpkgname
+done; unset pkg
+echo ''
+
+echo INTSALLING ADDITIONAL PACKAGES
+for pkg in \
+	curl \
+	lynx \
+	lftp \
+	; do
+	installpkgname
+done; unset pkg
+echo ''
+
+echo INTSALLING SNE PACKAGES
+for pkg in \
+        jfsutils \
+	iptables \
+        ; do
+        installpkgname
+done; unset pkg
+echo ''
+
+#echo SBOPKG
+#	bonnie++ \
 
