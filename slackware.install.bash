@@ -45,7 +45,6 @@ for set in a ap; do
 done; unset set
 echo ''
 
-#gnutls
 echo INTSALLING FEW PACKAGES FROM SET N
 for pkg in \
 	iputils \
@@ -56,6 +55,7 @@ for pkg in \
 	installpkgname
 done; unset pkg
 echo ''
+	#gnutls \
 
 echo INTSALLING ADD+SLACKPKG
 for pkg in \
@@ -71,11 +71,26 @@ for pkg in \
 done; unset pkg
 echo ''
 
-echo INTSALLING ADDITIONAL PACKAGES
+echo INTSALLING SSL TALK
 for pkg in \
 	curl \
+	ca-certificates	\
+	perl \
+	openssl \
+        ; do
+        installpkgname
+done; unset pkg
+echo ''
+
+echo INTSALLING ADDITIONAL PACKAGES
+for pkg in \
 	lynx \
 	lftp \
+	diffutils \
+	git \
+	cyrus-sasl \
+	file \
+	htop \
 	; do
 	installpkgname
 done; unset pkg
@@ -85,11 +100,18 @@ echo INTSALLING SNE PACKAGES
 for pkg in \
         jfsutils \
 	iptables \
+	dhcp \
+	ksh93 \
         ; do
         installpkgname
 done; unset pkg
 echo ''
+	#libpcap
+	#libnl3
+
+	#dhcpcd
 
 #echo SBOPKG
 #	bonnie++ \
+#	rsync \
 

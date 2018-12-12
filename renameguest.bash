@@ -33,10 +33,10 @@ s#vifname=$guestX\.#vifname=$guestY.#
 cd ../
 
 #disk, img, qcow2, ext4, xfs, reiser4, swap, WHATEVER
-echo renaming the files:
+echo -n renaming additional files:
 cd $guestY/
 for f in $guestX.*; do
-	echo -n mv $f ${f/$guestX/$guestY}...
+	echo -n ${f/$guestX/$guestY}...
 	mv $f ${f/$guestX/$guestY} && echo done
 done; unset f
 cd ../
