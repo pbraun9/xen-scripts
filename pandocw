@@ -1,7 +1,0 @@
-#!/bin/bash
-[[ -z $1 ]] && echo argument missing && exit 1
-echo -n ${1%\.md}.pdf...
-pandoc --latex-engine=xelatex -V geometry:margin=1in -V papersize:a4paper -o ${1%\.md}.pdf $1 && echo done
-#-f markdown+fancy_lists
-#--toc --listings
-#-t context

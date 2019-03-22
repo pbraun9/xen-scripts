@@ -1,3 +1,0 @@
-#!/bin/bash
-[[ ! -f $@ ]] && echo $@ not found && exit 1
-sed '/^[[:space:]]*$/d; /^[[:space:]]*#/d' $@

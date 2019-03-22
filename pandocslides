@@ -1,6 +1,0 @@
-#!/bin/bash
-[[ -z $1 ]] && echo argument missing && exit 1
-[[ ! -f preamble.tex ]] && echo looking for preamble.tex in the current folder && exit 1
-echo -n ${1%\.md}.pdf...
-pandoc --latex-engine=xelatex -t beamer -H preamble.tex $1 -o ${1%\.md}.pdf && echo done
-#--toc --listings --slide-level=3
