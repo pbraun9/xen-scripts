@@ -18,6 +18,7 @@ cd /data/guests/
 [[ ! -d $guestX/ ]] && echo $guestX/ not found && exit 1
 [[ -d $guestY/ ]] && echo $guestY/ already exists! && exit 1
 [[ -f $guestY ]] && echo $guestY already exists BUT AS A FILE! && exit 1
+[[ $guestX = $guestY ]] && echo guest names are the same && exit 1
 
 echo -n mv $guestX/ $guestY/...
 mv $guestX/ $guestY/ && echo done

@@ -19,7 +19,7 @@ cd /data/templates/
 
 du -k $archive
 echo -n tar xSf $archive -C /data/guests/...
-time tar xSf $archive -C /data/guests/ && echo done
+tar xSf $archive -C /data/guests/ && echo done
 du -sk /data/guests/$template/
 
 #cat <<EOF

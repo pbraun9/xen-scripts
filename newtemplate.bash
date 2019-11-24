@@ -15,5 +15,6 @@ archive=$tpl/$guest.`date +%s`.tar
 du -sk $guest/
 echo -n tar cSf $archive $guest/...
 time tar cSf $archive $guest/ && echo done
+#rm -rf $guest/
 du -k $archive
 

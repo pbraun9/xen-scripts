@@ -1,2 +1,0 @@
-transport_url = rabbit://openstack:RABBIT_PASS@controller
-auth_strategy = keystone

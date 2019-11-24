@@ -1,4 +1,0 @@
-transport_url = rabbit://openstack:RABBIT_PASS@controller
-my_ip = x.x.x.x
-use_neutron = True
-firewall_driver = nova.virt.firewall.NoopFirewallDriver
