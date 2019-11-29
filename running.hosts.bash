@@ -56,6 +56,10 @@ echo QUEUE LENGTH
 dsh -e -g cluster "for netif in eth1 pubbr0 eth0 eth2 eth3 bond0 xenbr0; do echo -n \$netif: ; ifconfig \$netif | grep txqueuelen | awk '{print \$4}'; done; unset netif"
 echo ''
 
+echo LINK STATUS
+dsh -e -g xen mii-tool eth{0,1,2,3}
+echo
+
 echo GRO
 dsh -e -g cluster "for nic in eth1 eth0 eth2 eth3; do echo -n \$netif: ; ethtool -k \$nic 2>/dev/null | grep gro; done; unset nic"
 echo ''

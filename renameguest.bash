@@ -24,21 +24,17 @@ echo -n mv $guestX/ $guestY/...
 mv $guestX/ $guestY/ && echo done
 
 echo -n updating the pathes and vif names...
-cd $guestY/
-[[ ! -f $guestX ]] && echo $guestX config not found && exit 1
+[[ ! -f $guestY/$guestX ]] && echo $guestX config not found && exit 1
 sed -r "
 s#name = \"$guestX\"#name = \"$guestY\"#;
 s#/data/guests/$guestX/$guestX\.#/data/guests/$guestY/$guestY.#;
 s#vifname=$guestX\.#vifname=$guestY.#
-" $guestX > $guestY && rm -f $guestX && echo done
-cd ../
+" $guestY/$guestX > $guestY/$guestY && rm -f $guestY/$guestX && echo done
 
 #disk, img, qcow2, ext4, xfs, reiser4, swap, WHATEVER
 echo -n renaming additional files:
-cd $guestY/
-for f in $guestX.*; do
-	echo -n ${f/$guestX/$guestY}...
-	mv $f ${f/$guestX/$guestY} && echo done
+for f in $guestY/$guestX.*; do
+	echo -n $guestY/${f/$guestX/$guestY}...
+	mv $guestY/$f $guestY/${f/$guestX/$guestY} && echo done
 done; unset f
-cd ../
 
