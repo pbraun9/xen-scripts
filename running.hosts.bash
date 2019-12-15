@@ -87,7 +87,3 @@ dsh -e -g xen "ssh slack3hb hostname"
 dsh -e -g xen "ssh slack4hb hostname"
 echo ''
 
-#echo PACKAGES
-#dsh -e -g xen "ls -1 /var/log/packages/ | grep tigervnc"
-#echo ''
-
