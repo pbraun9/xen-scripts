@@ -32,9 +32,9 @@ s#vifname=$guestX\.#vifname=$guestY.#
 " $guestY/$guestX > $guestY/$guestY && rm -f $guestY/$guestX && echo done
 
 #disk, img, qcow2, ext4, xfs, reiser4, swap, WHATEVER
-echo -n renaming additional files:
+echo renaming additional files
 for f in $guestY/$guestX.*; do
-	echo -n $guestY/${f/$guestX/$guestY}...
-	mv $guestY/$f $guestY/${f/$guestX/$guestY} && echo done
+	mv $f ${f/$guestX/$guestY} && echo -ne "\t${f/$guestX/$guestY} "
 done; unset f
+echo ''
 
