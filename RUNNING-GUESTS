@@ -1,0 +1,4 @@
+#!/bin/bash
+
+dsh -e -g xen xl li
+

@@ -12,9 +12,9 @@ archive=$tpl/$guest.`date +%s`.tar
 
 [[ ! -d $guest/ ]] && echo $guest/ not found && exit 1
 
-du -sk $guest/
+du -sh $guest/
 echo -n tar cSf $archive $guest/...
 time tar cSf $archive $guest/ && echo done
 #rm -rf $guest/
-du -k $archive
+du -h $archive
 

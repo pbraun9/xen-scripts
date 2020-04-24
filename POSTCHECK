@@ -1,0 +1,45 @@
+#!/bin/bash
+
+echo HOSTNAME
+dsh -e -g xen uname -n
+echo
+
+echo KERNEL
+dsh -e -g xen uname -r
+dsh -e -g xen ls -lF /lib/modules/
+echo
+
+echo TIMEZONE
+dsh -e -g xen date
+dsh -e -g xen ls -lF /etc/localtime
+dsh -e -g xen pgrep -a ntpd
+echo
+
+echo ENVIRONMENT
+dsh -e -g xen grep ^PATH /etc/profile
+dsh -e -g xen grep color=auto /etc/profile
+dsh -e -g xen '[[ -f /etc/shrc ]] && echo /etc/shrc should not be there'
+echo
+
+echo NETWORK
+dsh -e -g xen netstat -rn --inet
+dsh -e -g xen 'grep -v ^# /etc/resolv.conf'
+echo
+
+echo SYSTEM
+dsh -e -g xen "grep -vE '^#|^$|^echo' /etc/rc.d/rc.local_shutdown"
+dsh -e -g xen 'grep -v ^# /etc/slackpkg/mirrors'
+dsh -e -g xen grep ^REPOPLUS /etc/slackpkg/slackpkgplus*.conf
+echo
+dsh -e -g xen grep ^MIRRORPLUS /etc/slackpkg/slackpkgplus*.conf
+echo
+dsh -e -g xen "ls -1F \
+	/var/log/packages/sbopkg-* \
+	/var/log/packages/yajl-* \
+	/var/log/packages/gcc-5* \
+	/var/log/packages/glibc-2* \
+	/var/log/packages/glibc-solibs-* \
+	/var/log/packages/compat32-tools-* \
+	; echo"
+echo
+
