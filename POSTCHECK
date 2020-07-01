@@ -43,3 +43,6 @@ dsh -e -g xen "ls -1F \
 	; echo"
 echo
 
+dsh -e -g xen grep local /etc/ld.so.conf
+dsh -e -g xen file /usr/local/lib/libxlutil.so
+
