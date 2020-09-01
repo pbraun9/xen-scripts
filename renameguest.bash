@@ -31,10 +31,11 @@ s#/data/guests/$guestX/$guestX\.#/data/guests/$guestY/$guestY.#;
 s#vifname=$guestX\.#vifname=$guestY.#
 " $guestY/$guestX > $guestY/$guestY && rm -f $guestY/$guestX && echo done
 
+echo renaming additional files:
+cd $guestY/
 #disk, img, qcow2, ext4, xfs, reiser4, swap, WHATEVER
-echo renaming additional files
-for f in $guestY/$guestX.*; do
-	mv $f ${f/$guestX/$guestY} && echo -ne "\t${f/$guestX/$guestY} "
+for f in $guestX.*; do
+	mv $f ${f/$guestX/$guestY} && echo $f --\> ${f/$guestX/$guestY}
 done; unset f
-echo ''
+cd ../
 
