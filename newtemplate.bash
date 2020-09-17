@@ -3,8 +3,6 @@ set -e
 
 [[ -z $1 ]] && echo what guest? && exit 1
 
-cd /data/guests/
-
 #removing the possible trailing slash
 guest=${1%/}
 tpl=/data/templates

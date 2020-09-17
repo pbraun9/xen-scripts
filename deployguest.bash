@@ -1,26 +1,18 @@
 #!/bin/bash
 set -e
 
-function usage {
-	cat <<-EOF
-	usage: $0 template.tar
-	EOF
-	exit 1
-}
+[[ -z $1 ]] && echo what template? && exit 1
 
-[[ -z $1 ]] && usage
 archive=$1
 template=${archive%%\.*}
-
-cd /data/templates/
 
 [[ -d $template/ ]] && echo $template/ already exists! && exit 1
 [[ -f $template ]] && echo $template already exists BUT AS A FILE! && exit 1
 
-du -k $archive
-echo -n tar xSf $archive -C /data/guests/...
-tar xSf $archive -C /data/guests/ && echo done
-du -sk /data/guests/$template/
+du -h /data/templates/$archive
+echo -n tar xSf /data/templates/$archive ...
+tar xSf /data/templates/$archive && echo done
+du -sh $template/
 
 #cat <<EOF
 #
