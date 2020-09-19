@@ -18,22 +18,24 @@ guestY=$2
 [[ -f $guestY ]] && echo $guestY already exists BUT AS A FILE! && exit 1
 [[ $guestX = $guestY ]] && echo guest names are the same && exit 1
 
-echo -n mv $guestX/ $guestY/...
+echo -n renaming $guestX/ to $guestY/ ...
 mv $guestX/ $guestY/ && echo done
+echo
 
 echo -n updating the pathes and vif names...
 [[ ! -f $guestY/$guestX ]] && echo $guestX config not found && exit 1
 sed -r "
 s#name = \"$guestX\"#name = \"$guestY\"#;
-s#/data/guests/$guestX/$guestX\.#/data/guests/$guestY/$guestY.#;
+s#guests/$guestX/$guestX\.#guests/$guestY/$guestY.#;
 s#vifname=$guestX\.#vifname=$guestY.#
 " $guestY/$guestX > $guestY/$guestY && rm -f $guestY/$guestX && echo done
+echo
 
 echo renaming additional files:
 cd $guestY/
 #disk, img, qcow2, ext4, xfs, reiser4, swap, WHATEVER
 for f in $guestX.*; do
 	mv $f ${f/$guestX/$guestY} && echo $f --\> ${f/$guestX/$guestY}
-done; unset f
+done && echo done; unset f
 cd ../
 

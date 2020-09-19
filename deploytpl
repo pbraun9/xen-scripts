@@ -1,0 +1,269 @@
+#!/bin/bash
+set -e
+
+#TODO - scale to data2,3...
+#TODO - scale to ${ip%\.*}.1,2,3...
+#TODO - remove staff ssh keys
+#TOTO - alerts directly to monitoring instead of asking users to send an email...
+
+store=/data1
+
+function usage {
+	echo
+	echo Usage: $0 \<guest\> \<ip\>
+	echo
+        exit 1
+}
+
+function bomb {
+	echo
+        echo Error: $@
+	echo
+        exit 1
+}
+
+#pubkey is optional
+[[ -z $3 ]] && usage
+distro=$1
+guest=$2
+ip=$3
+pubkey="$4"
+
+ [[ $distro = centos8 ]] && vdisk=$distro.xfs
+  [[ $distro = crux35 ]] && vdisk=$distro.reiser4
+  [[ $distro = buster ]] && vdisk=$distro.ext4
+[[ $distro = sabotage ]] && vdisk=$distro.reiser4
+   [[ $distro = slack ]] && vdisk=$distro.reiser4
+   [[ $distro = focal ]] && vdisk=$distro.ext4
+
+[[ ! -f /data/templates/$vdisk ]] && bomb there is no such distro available
+
+#tpl=...
+#tplname=${tpl%%\.*}
+
+[[ -d $store/guests/$guest/ ]] && bomb guest with name $guest already exists
+#$store/data/guests/$guest/ already exists
+
+[[ -n `xl list | grep -E "^$guest[[:space:]]" | awk '{print $1}'` ]] && \
+	bomb guest with name $guest is already up and running
+
+ping -c1 -W1 $ip >/dev/null 2>&1 && bomb $ip is already alive
+
+#[[ ! -x /root/xen/deployguest.bash ]] \
+#        && echo /root/xen/deployguest.bash not executable && exit 1
+#[[ ! -x /root/xen/renameguest.bash ]] \
+#        && echo /root/xen/renameguest.bash not executable && exit 1
+
+#set -e helps here - as $store/guests/ should already exist
+mkdir $store/guests/$guest/
+mkdir $store/guests/$guest/lala/
+
+# CWD is /root/ and we're going relative
+cd $store/guests/$guest/
+
+#/root/xen/deployguest.bash $tpl
+#/root/xen/renameguest.bash $tplname $guest
+
+#echo -n cloning sparse virtual disk templates/$distro.ext4 to guests/$guest/$guest.ext4 ...
+echo -n cloning sparse virtual disk...
+cp --sparse=always /data/templates/$distro.ext4 $guest.ext4 && \
+	echo done || bomb failed to clone sparse file
+
+#echo -n checking $guest.reiser4...
+#fsck.reiser4 -yf --fix --preen $guest.reiser4 >/dev/null 2>&1 && \
+#	echo done || bomb failed to check sparse file
+#echo -n mounting REISER4...
+#
+#mkdir lala/
+#mount -o loop,rw $guest.reiser4 lala/ && 
+#	echo done || bomb failed to mount sparse file
+
+echo -n mouting ext4...
+mount -o loop,rw $guest.ext4 lala/ && \
+	echo done || bomb failed to mount sparse file
+
+# BEWARE WE ARE ERASING ALL ONLY BECAUSE THIS IS OUR TEMPLATE ANYWAYS
+echo -n deploying modules...
+mkdir -p lala/lib/modules/
+rm -rf lala/lib/modules/*
+tar xzf /data/kernels/5.2.21.domureiser4.modules.tar.gz -C lala/lib/modules/ && \
+	echo done || bomb failed to deliver TMEM kernel module within the guest
+
+#for ball in `ls -1 /data/kernels/lib.modules.*.tar.gz`; do
+#        echo -n $ball...
+#        tar xzf $ball -C lala/lib/modules/ && echo done
+#done; unset ball
+
+if [[ $distro = slack ]]; then
+	echo -n HOSTNAME...
+	echo ${guest#dnc-} > lala/etc/HOSTNAME && echo done
+
+	echo -n rc.inet1...
+	cat > lala/etc/rc.d/rc.inet1 <<EOF && echo done || bomb failed to deliver rc.inet1
+#!/bin/bash
+
+echo rc.inet1 PATH is \$PATH
+
+if [[ $1 != stop && $1 != down ]]; then
+	echo -n lo...
+	ifconfig lo up && echo done
+
+	echo -n eth0...
+	ifconfig eth0 $ip/24 up && echo done
+
+	echo -n default route...
+	route add default gw ${ip%\.*}.254 && echo done
+fi
+EOF
+	chmod +x lala/etc/rc.d/rc.inet1
+
+	echo -n resolv...
+	cat > lala/etc/resolv.conf <<EOF && echo done || bomb failed to deliver resolv.conf
+search nethence.com
+nameserver 62.210.16.6
+nameserver 62.210.16.7
+EOF
+elif [[ $distro = focal ]]; then
+	echo -n hostname...
+	echo ${guest#dnc-} > lala/etc/hostname && \
+		echo done || bomb failed to deliver /etc/hostname
+
+	echo -n netplan...
+	cat > lala/etc/netplan/nethence.yaml <<EOF && \
+		echo done || bomb failed to deliver /etc/netplan/nethence.yaml
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    eth0:
+      dhcp4: no
+      dhcp6: no
+      addresses:
+       - $ip/24
+      gateway4: ${ip%\.*}.1
+      nameservers:
+        search: [nethence.com]
+        addresses: [62.210.16.6, 62.210.16.7]
+EOF
+elif [[ $distro = buster ]]; then
+	echo -n hostname...
+	echo ${guest#dnc-} > lala/etc/hostname && \
+		echo done || bomb failed to deliver /etc/hostname
+
+	echo -n interfaces...
+	#not -EOF for tabs to get there
+	cat > lala/etc/network/interfaces <<EOF && \
+		echo done || bomb failed to deliver /etc/network/interfaces
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+	address $ip/24
+	gateway ${ip%\.*}.1
+	dns-search nethence.com
+	dns-nameservers 62.210.16.6 62.210.16.7
+EOF
+		#dns-nameservers 208.67.222.222 208.67.220.220
+
+	#echo -n resolv...
+	#getting rid of resolved symlink
+	#mv lala/etc/resolv.conf lala/etc/resolv.conf.dist
+	#cat > lala/etc/resolv.conf <<EOF && echo done
+	#search nethence.com
+	#nameserver 208.67.222.222
+	#nameserver 208.67.220.220
+	#EOF
+
+	#echo NEXT ROUND TEMPLATE lala/etc/systemd/resolved.conf...
+	#cat >> lala/etc/systemd/resolved.conf <<EOF
+	#Cache=no
+	#DNSStubListener=no
+	#EOF
+fi
+
+echo -n hosts...
+cat > lala/etc/hosts <<-EOF && \
+	echo done || bomb failed to deliver /etc/hosts
+127.0.0.1 localhost
+
+$ip	${guest#dnc-}
+${ip%\.*}.1	gw
+
+::1 ip6-localhost ip6-loopback
+fe00::0 ip6-localnet
+ff00::0 ip6-mcastprefix
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+ff02::3 ip6-allhosts
+EOF
+
+#echo -n DISABLING TEMPORARILY TMEM...
+#rm -f lala/etc/modules && echo DONE
+
+#echo -n ENABLING/OVERWRITING TMEM...
+#echo tmem > lala/etc/modules && echo DONE
+
+echo -n clean host keys...
+rm -f lala/etc/ssh/ssh_host_* && \
+	echo done || bomb failed to remove host keys
+
+echo -n fresh ed25519...
+ssh-keygen -q -t ed25519 -f lala/etc/ssh/ssh_host_ed25519_key -C "root@$guest" -N "" && \
+	echo done || bomb failed to deliver new host keys
+
+echo -n authorized keys...
+#maybe w/o -p to make sure there's nothing from template?
+mkdir -p lala/root/.ssh/
+chmod 700 lala/root/.ssh/
+cat > lala/root/.ssh/authorized_keys <<EOF && \
+	echo done || bomb failed to deliver /root/.ssh/authorized_keys
+$pubkey
+
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJTdirLiqtdrVX6nJAuRV0H4oqUV2RclQaIyq/McHEHy alex@alex
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMNWddNzcz/4w/B5fWTuMDO1jGyuWJhCn0j0WAD1/Pcf elge@extensa
+EOF
+chmod 600 lala/root/.ssh/authorized_keys
+
+echo -n un-mounting...
+umount lala/ && \
+	echo done || bomb failed to un-mount $guest\'s virtual disk
+rmdir lala/
+
+echo -n writing guest configuration...
+cat > $guest <<EOF && \
+	echo done || echo failed to write guest configuration
+kernel = "/data/kernels/5.2.21.domureiser4.vmlinuz"
+root = "/dev/xvda1 ro console=hvc0 net.ifnames=0 biosdevname=0 mitigations=off"
+name = "$guest"
+vcpus = 3
+maxvcpus = 8
+memory = 7168
+disk = ['tap:tapdisk:aio:$store/guests/$guest/$guest.ext4,xvda1,w']
+vif = [ 'bridge=br0, vifname=$guest.0' ]
+type = "pvh"
+EOF
+#netcfg/do_not_use_netplan=true ipv6.disable=1
+#extra = "init=/bin/bash"
+#memory = 8192
+#memory = 12288
+#memory = 16384
+#memory = 32768
+#disk = ['tap:tapdisk:aio:/data/guests/buster/buster.reiser4,xvda1,w']
+#disk = ['phy:/dev/drbd1,xvda1,w']
+#disk = ['phy:/dev/vdisks/thin1,xvda1,w']
+echo
+
+#absolute path in process list is a nice thing to have
+#self-verbose
+xl create $store/guests/$guest/$guest || bomb could not start $guest
+
+cat <<EOF
+
+ $guest is booting
+
+        ping $ip
+        ssh $ip -l root
+
+EOF
+
