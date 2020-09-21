@@ -29,12 +29,12 @@ guest=$2
 ip=$3
 pubkey="$4"
 
- [[ $distro = centos8 ]] && vdisk=$distro.xfs
-  [[ $distro = crux35 ]] && vdisk=$distro.reiser4
-  [[ $distro = buster ]] && vdisk=$distro.ext4
-[[ $distro = sabotage ]] && vdisk=$distro.reiser4
-   [[ $distro = slack ]] && vdisk=$distro.reiser4
-   [[ $distro = focal ]] && vdisk=$distro.ext4
+ [[ $distro = centos8 ]] && vdisk=$distro.xfs		&& target=$guest.xfs
+  [[ $distro = crux35 ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
+  [[ $distro = buster ]] && vdisk=$distro.ext4		&& target=$guest.ext4
+[[ $distro = sabotage ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
+   [[ $distro = slack ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
+   [[ $distro = focal ]] && vdisk=$distro.ext4		&& target=$guest.ext4
 
 [[ ! -f /data/templates/$vdisk ]] && bomb there is no such distro available
 
@@ -64,9 +64,8 @@ cd $store/guests/$guest/
 #/root/xen/deployguest.bash $tpl
 #/root/xen/renameguest.bash $tplname $guest
 
-#echo -n cloning sparse virtual disk templates/$distro.ext4 to guests/$guest/$guest.ext4 ...
 echo -n cloning sparse virtual disk...
-cp --sparse=always /data/templates/$distro.ext4 $guest.ext4 && \
+cp --sparse=always /data/templates/$vdisk $target && \
 	echo done || bomb failed to clone sparse file
 
 #echo -n checking $guest.reiser4...
@@ -78,8 +77,8 @@ cp --sparse=always /data/templates/$distro.ext4 $guest.ext4 && \
 #mount -o loop,rw $guest.reiser4 lala/ && 
 #	echo done || bomb failed to mount sparse file
 
-echo -n mouting ext4...
-mount -o loop,rw $guest.ext4 lala/ && \
+echo -n mouting $target...
+mount -o loop,rw $target lala/ && \
 	echo done || bomb failed to mount sparse file
 
 # BEWARE WE ARE ERASING ALL ONLY BECAUSE THIS IS OUR TEMPLATE ANYWAYS
@@ -94,7 +93,25 @@ tar xzf /data/kernels/5.2.21.domureiser4.modules.tar.gz -C lala/lib/modules/ && 
 #        tar xzf $ball -C lala/lib/modules/ && echo done
 #done; unset ball
 
-if [[ $distro = slack ]]; then
+if [[ $distro = sabotage ]]; then
+        echo -n hostname...
+        echo ${guest#dnc-} > lala/etc/hostname && \
+                echo done || bomb failed to deliver /etc/hostname
+
+	echo -n rc.local network configuration...
+	mv lala/etc/rc.local lala/etc/rc.local.tmp
+	#10.3.3.9 is reserved as the template IP address
+	sed -r "s/ip=10.3.3.9/ip=$ip" lala/etc/rc.local.tmp > lala/etc/rc.local && \
+		echo done || bomb could not tweak lala/etc/rc.local
+	chmod +x lala/etc/rc.local
+
+        echo -n resolv...
+        cat > lala/etc/resolv.conf <<EOF && echo done || bomb failed to deliver resolv.conf
+search nethence.com
+nameserver 62.210.16.6
+nameserver 62.210.16.7
+EOF
+elif [[ $distro = slack ]]; then
 	echo -n HOSTNAME...
 	echo ${guest#dnc-} > lala/etc/HOSTNAME && echo done
 
@@ -222,6 +239,7 @@ $pubkey
 
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJTdirLiqtdrVX6nJAuRV0H4oqUV2RclQaIyq/McHEHy alex@alex
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMNWddNzcz/4w/B5fWTuMDO1jGyuWJhCn0j0WAD1/Pcf elge@extensa
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM2dwM1ixasJ1a/7iVbRh46ERmOBXjxuCFM4KVdPJqqH alex@france1
 EOF
 chmod 600 lala/root/.ssh/authorized_keys
 
@@ -239,7 +257,7 @@ name = "$guest"
 vcpus = 3
 maxvcpus = 8
 memory = 7168
-disk = ['tap:tapdisk:aio:$store/guests/$guest/$guest.ext4,xvda1,w']
+disk = ['tap:tapdisk:aio:$store/guests/$guest/$target,xvda1,w']
 vif = [ 'bridge=br0, vifname=$guest.0' ]
 type = "pvh"
 EOF
