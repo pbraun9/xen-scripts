@@ -36,7 +36,7 @@ pubkey="$4"
    [[ $distro = slack ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
    [[ $distro = focal ]] && vdisk=$distro.ext4		&& target=$guest.ext4
 
-[[ ! -f /data/templates/$vdisk ]] && bomb there is no such distro available
+[[ ! -f /data/templates/$vdisk.tar ]] && bomb there is no such distro available
 
 #tpl=...
 #tplname=${tpl%%\.*}
@@ -64,9 +64,17 @@ cd $store/guests/$guest/
 #/root/xen/deployguest.bash $tpl
 #/root/xen/renameguest.bash $tplname $guest
 
-echo -n cloning sparse virtual disk...
-cp --sparse=always /data/templates/$vdisk $target && \
-	echo done || bomb failed to clone sparse file
+#echo -n cloning sparse virtual disk...
+#cp --sparse=always /data/templates/$vdisk $target && \
+#	echo done || bomb failed to clone sparse file
+
+echo -n extracting sparse virtual disk...
+tar xSf /data/templates/$vdisk.tar && \
+        echo done || bomb failed to extract sparse file archive
+
+echo -n remaning sparse virtual disk...
+mv $vdisk $target && \
+	echo done || bomb failed to rename $vdisk
 
 #echo -n checking $guest.reiser4...
 #fsck.reiser4 -yf --fix --preen $guest.reiser4 >/dev/null 2>&1 && \
@@ -101,7 +109,7 @@ if [[ $distro = sabotage ]]; then
 	echo -n rc.local network configuration...
 	mv lala/etc/rc.local lala/etc/rc.local.tmp
 	#10.3.3.9 is reserved as the template IP address
-	sed -r "s/ip=10.3.3.9/ip=$ip" lala/etc/rc.local.tmp > lala/etc/rc.local && \
+	sed -r "s/ip=10.3.3.9/ip=$ip/" lala/etc/rc.local.tmp > lala/etc/rc.local && \
 		echo done || bomb could not tweak lala/etc/rc.local
 	chmod +x lala/etc/rc.local
 
@@ -261,15 +269,6 @@ disk = ['tap:tapdisk:aio:$store/guests/$guest/$target,xvda1,w']
 vif = [ 'bridge=br0, vifname=$guest.0' ]
 type = "pvh"
 EOF
-#netcfg/do_not_use_netplan=true ipv6.disable=1
-#extra = "init=/bin/bash"
-#memory = 8192
-#memory = 12288
-#memory = 16384
-#memory = 32768
-#disk = ['tap:tapdisk:aio:/data/guests/buster/buster.reiser4,xvda1,w']
-#disk = ['phy:/dev/drbd1,xvda1,w']
-#disk = ['phy:/dev/vdisks/thin1,xvda1,w']
 echo
 
 #absolute path in process list is a nice thing to have
