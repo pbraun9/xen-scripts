@@ -29,8 +29,8 @@ guest=$2
 ip=$3
 pubkey="$4"
 
- [[ $distro = centos8 ]] && vdisk=$distro.xfs		&& target=$guest.xfs
-  [[ $distro = crux35 ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
+  [[ $distro = centos ]] && vdisk=$distro.xfs		&& target=$guest.xfs
+    [[ $distro = crux ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
   [[ $distro = buster ]] && vdisk=$distro.ext4		&& target=$guest.ext4
 [[ $distro = sabotage ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
    [[ $distro = slack ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
@@ -101,16 +101,71 @@ tar xzf /data/kernels/5.2.21.domureiser4.modules.tar.gz -C lala/lib/modules/ && 
 #        tar xzf $ball -C lala/lib/modules/ && echo done
 #done; unset ball
 
-if [[ $distro = sabotage ]]; then
+name=${guest#dnc-}
+nodenum=1
+
+# CRUX
+if [[ $distro = crux ]]; then
+	echo -n hostname...
+	mv -f lala/etc/rc.conf lala/etc/rc.conf.tmp
+	sed -r "s/HOSTNAME=.*/HOSTNAME=$name" lala/etc/rc.conf.tmp > lala/etc/rc.conf && \
+		rm -f lala/etc/rc.conf.tmp && echo done
+
+	echo -n network...
+	mv -f lala/etc/rc.d/net lala/etc/rc.d/net.tmp
+	sed -r "s/ADDR=.*/ADDR=$ip/;
+		s/GW=.*/GW=${ip%\.*}.$nodenum/;" lala/etc/rc.d/net.tmp > lala/etc/rc.d/net && \
+		rm -f lala/etc/rc.d/net.tmp && echo done
+
+	#resolv.conf already fine from template
+
+# DEBIAN
+elif [[ $distro = buster ]]; then
         echo -n hostname...
-        echo ${guest#dnc-} > lala/etc/hostname && \
+        echo $name > lala/etc/hostname && \
+                echo done || bomb failed to deliver /etc/hostname
+
+        echo -n interfaces...
+        #not -EOF for tabs to get there
+        cat > lala/etc/network/interfaces <<EOF && \
+                echo done || bomb failed to deliver /etc/network/interfaces
+auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet static
+        address $ip/24
+        gateway ${ip%\.*}.1
+        dns-search nethence.com
+        dns-nameservers 62.210.16.6 62.210.16.7
+EOF
+                #dns-nameservers 208.67.222.222 208.67.220.220
+
+        #echo -n resolv...
+        #getting rid of resolved symlink
+        #mv lala/etc/resolv.conf lala/etc/resolv.conf.dist
+        #cat > lala/etc/resolv.conf <<EOF && echo done
+        #search nethence.com
+        #nameserver 208.67.222.222
+        #nameserver 208.67.220.220
+        #EOF
+
+        #echo NEXT ROUND TEMPLATE lala/etc/systemd/resolved.conf...
+        #cat >> lala/etc/systemd/resolved.conf <<EOF
+        #Cache=no
+        #DNSStubListener=no
+        #EOF
+
+# SABOTAGE
+elif [[ $distro = sabotage ]]; then
+        echo -n hostname...
+        echo $name > lala/etc/hostname && \
                 echo done || bomb failed to deliver /etc/hostname
 
 	echo -n rc.local network configuration...
-	mv lala/etc/rc.local lala/etc/rc.local.tmp
-	#10.3.3.9 is reserved as the template IP address
-	sed -r "s/ip=10.3.3.9/ip=$ip/" lala/etc/rc.local.tmp > lala/etc/rc.local && \
-		echo done || bomb could not tweak lala/etc/rc.local
+	mv -f lala/etc/rc.local lala/etc/rc.local.tmp
+	sed -r "s/ip=.*/ip=$ip/" lala/etc/rc.local.tmp > lala/etc/rc.local && \
+		rm -f lala/etc/rc.local.tmp && echo done || bomb could not tweak lala/etc/rc.local
 	chmod +x lala/etc/rc.local
 
         echo -n resolv...
@@ -119,9 +174,11 @@ search nethence.com
 nameserver 62.210.16.6
 nameserver 62.210.16.7
 EOF
+
+# SLACKWARE
 elif [[ $distro = slack ]]; then
 	echo -n HOSTNAME...
-	echo ${guest#dnc-} > lala/etc/HOSTNAME && echo done
+	echo $name > lala/etc/HOSTNAME && echo done
 
 	echo -n rc.inet1...
 	cat > lala/etc/rc.d/rc.inet1 <<EOF && echo done || bomb failed to deliver rc.inet1
@@ -137,7 +194,7 @@ if [[ $1 != stop && $1 != down ]]; then
 	ifconfig eth0 $ip/24 up && echo done
 
 	echo -n default route...
-	route add default gw ${ip%\.*}.254 && echo done
+	route add default gw ${ip%\.*}.$nodenum && echo done
 fi
 EOF
 	chmod +x lala/etc/rc.d/rc.inet1
@@ -148,9 +205,11 @@ search nethence.com
 nameserver 62.210.16.6
 nameserver 62.210.16.7
 EOF
+
+# UBUNTU
 elif [[ $distro = focal ]]; then
 	echo -n hostname...
-	echo ${guest#dnc-} > lala/etc/hostname && \
+	echo $name > lala/etc/hostname && \
 		echo done || bomb failed to deliver /etc/hostname
 
 	echo -n netplan...
@@ -165,14 +224,14 @@ network:
       dhcp6: no
       addresses:
        - $ip/24
-      gateway4: ${ip%\.*}.1
+      gateway4: ${ip%\.*}.$nodenum
       nameservers:
         search: [nethence.com]
         addresses: [62.210.16.6, 62.210.16.7]
 EOF
 elif [[ $distro = buster ]]; then
 	echo -n hostname...
-	echo ${guest#dnc-} > lala/etc/hostname && \
+	echo $name > lala/etc/hostname && \
 		echo done || bomb failed to deliver /etc/hostname
 
 	echo -n interfaces...
