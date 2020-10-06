@@ -13,7 +13,7 @@ nodenum=1
 
 function usage {
 	echo
-	echo Usage: $0 \<distribution\> \<guest name\> \<ip\>
+	echo Usage: $0 \<distribution\> \<guest name\> \<account\>
 	echo
         exit 1
 }
@@ -27,19 +27,35 @@ function bomb {
 [[ -z $3 ]] && usage
 distro=$1
 guest=$2
-ip=$3
+account=$3
 pubkey="$4"
 
 name=${guest#dnc-}
+
+# /root/taken-ip-addresses.csv format as follows:
+#
+# 10.3.3.100,template,nobody
+#
+
+sub=10.3.3
+last=`sort -V /root/taken-ip-addresses.csv | tail -1 | cut -f1 -d, | cut -f4 -d.`
+(( last > 249 )) && bomb there is no ip4 left: $sub.$last is taken
+(( tmp = last + 1 ))
+ip=$sub.$tmp
+unset tmp
+echo -n provisioning ip4 address $ip ...
+echo $ip,$name,nobody >> /root/taken-ip-addresses.csv && echo done
+
 gw=${ip%\.*}.$nodenum
 
-  [[ $distro = centos ]] && vdisk=$distro.xfs		&& target=$guest.xfs
-    [[ $distro = crux ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
-  [[ $distro = buster ]] && vdisk=$distro.ext4		&& target=$guest.ext4
- [[ $distro = netbsd9 ]] && vdisk=$distro.ffs		&& target=$guest.ffs
-[[ $distro = sabotage ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
-   [[ $distro = slack ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
    [[ $distro = focal ]] && vdisk=$distro.ext4		&& target=$guest.ext4
+  [[ $distro = centos ]] && vdisk=$distro.xfs		&& target=$guest.xfs
+  [[ $distro = buster ]] && vdisk=$distro.ext4		&& target=$guest.ext4
+
+   [[ $distro = slack ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
+ [[ $distro = netbsd9 ]] && vdisk=$distro.ffs		&& target=$guest.ffs
+    [[ $distro = crux ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
+[[ $distro = sabotage ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
 
 [[ ! -f /data/templates/$vdisk.tar ]] && bomb there is no such distro available: $vdisk.tar
 
