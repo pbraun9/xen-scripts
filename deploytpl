@@ -20,7 +20,7 @@ function usage {
 
 function bomb {
 	echo FAIL $@
-        exit 1
+	exit 1
 }
 
 #pubkey is optional
@@ -30,6 +30,7 @@ guest=$2
 ip=$3
 pubkey="$4"
 
+name=${guest#dnc-}
 gw=${ip%\.*}.$nodenum
 
   [[ $distro = centos ]] && vdisk=$distro.xfs		&& target=$guest.xfs
@@ -99,243 +100,22 @@ else
 	rm -rf lala/lib/modules/*
 	tar xzf /data/kernels/5.2.21.domureiser4.modules.tar.gz -C lala/lib/modules/ && echo done
 fi
-
 #for ball in `ls -1 /data/kernels/lib.modules.*.tar.gz`; do
 #        echo -n $ball...
 #        tar xzf $ball -C lala/lib/modules/ && echo done
 #done; unset ball
+echo
 
-name=${guest#dnc-}
-
-# CENTOS
-if [[ $distro = centos ]]; then
-        echo -n hostname...
-        echo $name > lala/etc/hostname && echo done || bomb
-
-	echo -n hosts...
-	cat > lala/etc/hosts <<EOF && echo done || bomb
-127.0.0.1	localhost localhost.localdomain localhost4 localhost4.localdomain4
-::1		localhost localhost.localdomain localhost6 localhost6.localdomain6
-$ip	$name
-EOF
-
-	echo -n resolv...
-        cat > lala/etc/resolv.conf <<EOF && echo done || bomb
-search nethence.com
-nameserver 62.210.16.6
-nameserver 62.210.16.7
-EOF
-        cp -pf lala/etc/resolv.conf lala/etc/resolv.conf.ip4
-
-	echo -n gateway...
-	cat > lala/etc/sysconfig/network <<EOF && echo done || bomb
-NETWORKING=yes
-NOZEROCONF=no
-GATEWAY=$gw
-EOF
-
-	echo -n eth0...
-	cat > lala/etc/sysconfig/network-scripts/ifcfg-eth0 <<EOF && echo done || bomb
-DEVICE=eth0
-IPADDR=$ip
-PREFIX=24
-ONBOOT=yes
-NM_CONTROLLED=no
-EOF
-
-# CRUX
-elif [[ $distro = crux ]]; then
-	echo -n hostname...
-	mv -f lala/etc/rc.conf lala/etc/rc.conf.tmp
-	sed -r "s/HOSTNAME=.*/HOSTNAME=$name" lala/etc/rc.conf.tmp > lala/etc/rc.conf && \
-		rm -f lala/etc/rc.conf.tmp && echo done
-
-	echo -n network...
-	mv -f lala/etc/rc.d/net lala/etc/rc.d/net.tmp
-	sed -r "s/ADDR=.*/ADDR=$ip/;
-		s/GW=.*/GW=${ip%\.*}.$nodenum/;" lala/etc/rc.d/net.tmp > lala/etc/rc.d/net && \
-		rm -f lala/etc/rc.d/net.tmp && echo done
-
-	#resolv.conf already fine from template
-
-# DEBIAN
-elif [[ $distro = buster ]]; then
-        echo -n hostname...
-        echo $name > lala/etc/hostname &&  echo done || bomb
-
-        echo -n interfaces...
-        #not -EOF for tabs to get there
-        cat > lala/etc/network/interfaces <<EOF && echo done || bomb
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet static
-        address $ip/24
-        gateway ${ip%\.*}.1
-        dns-search nethence.com
-        dns-nameservers 62.210.16.6 62.210.16.7
-EOF
-                #dns-nameservers 208.67.222.222 208.67.220.220
-
-        #echo -n resolv...
-        #getting rid of resolved symlink
-        #mv lala/etc/resolv.conf lala/etc/resolv.conf.dist
-        #cat > lala/etc/resolv.conf <<EOF && echo done
-        #search nethence.com
-        #nameserver 208.67.222.222
-        #nameserver 208.67.220.220
-        #EOF
-
-        #echo NEXT ROUND TEMPLATE lala/etc/systemd/resolved.conf...
-        #cat >> lala/etc/systemd/resolved.conf <<EOF
-        #Cache=no
-        #DNSStubListener=no
-        #EOF
-
-# NETBSD
-
-elif [[ $distro = netbsd9 ]]; then
-	echo -n hostname...
-	echo $name > lala/etc/myname && echo done
-
-	echo -n xennet0...
-	echo inet $ip/24 up > lala/etc/ifconfig.xennet0 && echo done
-
-	echo -n gateway...
-	echo $gw > lala/etc/mygate && echo done
-
-	echo -n resolv...
-        cat > lala/etc/resolv.conf <<EOF && echo done
-search nethence.com
-nameserver 62.210.16.6
-nameserver 62.210.16.7
-EOF
-
-	echo HOT FIX FOR SSHD...
-	echo sshd=yes >> lala/etc/rc.conf && echo DONE
-
-# SABOTAGE
-elif [[ $distro = sabotage ]]; then
-        echo -n hostname...
-        echo $name > lala/etc/hostname && echo done || bomb
-
-	echo -n rc.local network configuration...
-	mv -f lala/etc/rc.local lala/etc/rc.local.tmp
-	#do_static_ip already set to true into template
-	sed -r "s/[[:space:]]ip=.*/ip=$ip/" lala/etc/rc.local.tmp > lala/etc/rc.local && rm -f lala/etc/rc.local.tmp && echo done
-	chmod +x lala/etc/rc.local
-
-        echo -n resolv...
-        cat > lala/etc/resolv.conf <<EOF && echo done
-search nethence.com
-nameserver 62.210.16.6
-nameserver 62.210.16.7
-EOF
-
-# SLACKWARE
-elif [[ $distro = slack ]]; then
-	echo -n HOSTNAME...
-	echo $name > lala/etc/HOSTNAME && echo done
-
-	echo -n rc.inet1...
-	cat > lala/etc/rc.d/rc.inet1 <<EOF && echo done || bomb
-#!/bin/bash
-
-echo rc.inet1 PATH is \$PATH
-
-if [[ $1 != stop && $1 != down ]]; then
-	echo -n lo...
-	ifconfig lo up && echo done
-
-	echo -n eth0...
-	ifconfig eth0 $ip/24 up && echo done
-
-	echo -n default route...
-	route add default gw ${ip%\.*}.$nodenum && echo done
-fi
-EOF
-	chmod +x lala/etc/rc.d/rc.inet1
-
-	echo -n resolv...
-	cat > lala/etc/resolv.conf <<EOF && echo done || bomb
-search nethence.com
-nameserver 62.210.16.6
-nameserver 62.210.16.7
-EOF
-
-# UBUNTU
-elif [[ $distro = focal ]]; then
-	echo -n hostname...
-	echo $name > lala/etc/hostname && echo done || bomb
-
-	echo -n netplan...
-	cat > lala/etc/netplan/nethence.yaml <<EOF && echo done || bomb
-network:
-  version: 2
-  renderer: networkd
-  ethernets:
-    eth0:
-      dhcp4: no
-      dhcp6: no
-      addresses:
-       - $ip/24
-      gateway4: ${ip%\.*}.$nodenum
-      nameservers:
-        search: [nethence.com]
-        addresses: [62.210.16.6, 62.210.16.7]
-EOF
-elif [[ $distro = buster ]]; then
-	echo -n hostname...
-	echo $name > lala/etc/hostname && \
-		echo done || bomb failed to deliver /etc/hostname
-
-	echo -n interfaces...
-	#not -EOF for tabs to get there
-	cat > lala/etc/network/interfaces <<EOF && \
-		echo done || bomb failed to deliver /etc/network/interfaces
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet static
-	address $ip/24
-	gateway ${ip%\.*}.1
-	dns-search nethence.com
-	dns-nameservers 62.210.16.6 62.210.16.7
-EOF
-		#dns-nameservers 208.67.222.222 208.67.220.220
-
-	#echo -n resolv...
-	#getting rid of resolved symlink
-	#mv lala/etc/resolv.conf lala/etc/resolv.conf.dist
-	#cat > lala/etc/resolv.conf <<EOF && echo done
-	#search nethence.com
-	#nameserver 208.67.222.222
-	#nameserver 208.67.220.220
-	#EOF
-
-	#echo NEXT ROUND TEMPLATE lala/etc/systemd/resolved.conf...
-	#cat >> lala/etc/systemd/resolved.conf <<EOF
-	#Cache=no
-	#DNSStubListener=no
-	#EOF
-fi
-
-echo -n hosts...
-cat > lala/etc/hosts <<-EOF && echo done
-127.0.0.1 localhost
-
-$ip	${guest#dnc-}
-${ip%\.*}.1	gw
-
-::1 ip6-localhost ip6-loopback
-fe00::0 ip6-localnet
-ff00::0 ip6-mcastprefix
-ff02::1 ip6-allnodes
-ff02::2 ip6-allrouters
-ff02::3 ip6-allhosts
-EOF
+case $distro in
+        focal)		source /root/xen/distro/ubuntu.bash	&& setup-ubuntu ;;
+        buster)		source /root/xen/distro/debian.bash	&& setup-debian ;;
+        centos)		source /root/xen/distro/centos.bash	&& setup-centos ;;
+        slack)		source /root/xen/distro/slackware.bash	&& setup-slackware ;;
+        netbsd9)	source /root/xen/distro/netbsd.bash	&& setup-netbsd ;;
+        crux)		source /root/xen/distro/crux.bash	&& setup-crux ;;
+        sabotage)	source /root/xen/distro/sabotage.bash	&& setup-sabotage ;;
+        *)		bomb wrong distro: $distro ;;
+esac
 
 #echo -n DISABLING TEMPORARILY TMEM...
 #rm -f lala/etc/modules && echo DONE
@@ -343,7 +123,7 @@ EOF
 #echo -n ENABLING/OVERWRITING TMEM...
 #echo tmem > lala/etc/modules && echo DONE
 
-echo -n clean host keys...
+echo -n wipe-out host keys...
 rm -f lala/etc/ssh/ssh_host_* && echo done || bomb
 
 echo -n fresh ed25519...
@@ -369,7 +149,7 @@ rmdir lala/
 
 # NETBSD
 if [[ $distro = netbsd9 ]]; then
-	echo -n writing netbsd9 guest configuration...
+	echo -n netbsd guest configuration...
 	cat > $guest <<EOF && echo done
 #kernel = "/data/kernels/netbsd9/netbsd-INSTALL_XEN3_DOMU.gz"
 kernel = "/data/kernels/netbsd9/netbsd-XEN3_DOMU.gz"
@@ -386,7 +166,7 @@ EOF
 
 # LINUCES
 else
-	echo -n writing linuces guest configuration...
+	echo -n linux guest configuration...
 	cat > $guest <<EOF && echo done
 kernel = "/data/kernels/5.2.21.domureiser4.vmlinuz"
 root = "/dev/xvda1 ro console=hvc0 net.ifnames=0 biosdevname=0 mitigations=off"
@@ -399,15 +179,15 @@ vif = [ 'bridge=br0, vifname=v$name.0' ]
 type = "pvh"
 EOF
 fi
-echo
 
 #absolute path in process list is a nice thing to have
 #self-verbose
-xl create $store/guests/$guest/$guest || bomb could not start $guest
+echo -n starting guest...
+xl create $store/guests/$guest/$guest >> /root/deploytpl.log 2>&1 && echo done || bomb
 
 cat <<EOF
 
- $guest is booting
+ $name is booting
 
         ping $ip
         ssh $ip -l root

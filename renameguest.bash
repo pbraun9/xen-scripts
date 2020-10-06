@@ -20,7 +20,6 @@ guestY=$2
 
 echo -n renaming $guestX/ to $guestY/ ...
 mv $guestX/ $guestY/ && echo done
-echo
 
 echo -n updating the pathes and vif names...
 [[ ! -f $guestY/$guestX ]] && echo $guestX config not found && exit 1
@@ -29,7 +28,6 @@ s#name = \"$guestX\"#name = \"$guestY\"#;
 s#guests/$guestX/$guestX\.#guests/$guestY/$guestY.#;
 s#vifname=$guestX\.#vifname=$guestY.#
 " $guestY/$guestX > $guestY/$guestY && rm -f $guestY/$guestX && echo done
-echo
 
 echo renaming additional files:
 cd $guestY/
