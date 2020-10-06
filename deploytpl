@@ -1,24 +1,25 @@
 #!/bin/bash
 set -e
 
+#TODO - fix redundant /etc/hosts
 #TODO - scale to data2,3...
 #TODO - scale to ${ip%\.*}.1,2,3...
 #TODO - remove staff ssh keys
 #TOTO - alerts directly to monitoring instead of asking users to send an email...
+#SEC - what if this script becomes interactive for some reason (like cp -i), will user be able to answer?
 
 store=/data1
+nodenum=1
 
 function usage {
 	echo
-	echo Usage: $0 \<guest\> \<ip\>
+	echo Usage: $0 \<distribution\> \<guest name\> \<ip\>
 	echo
         exit 1
 }
 
 function bomb {
-	echo
-        echo Error: $@
-	echo
+	echo FAIL $@
         exit 1
 }
 
@@ -29,14 +30,17 @@ guest=$2
 ip=$3
 pubkey="$4"
 
+gw=${ip%\.*}.$nodenum
+
   [[ $distro = centos ]] && vdisk=$distro.xfs		&& target=$guest.xfs
     [[ $distro = crux ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
   [[ $distro = buster ]] && vdisk=$distro.ext4		&& target=$guest.ext4
+ [[ $distro = netbsd9 ]] && vdisk=$distro.ffs		&& target=$guest.ffs
 [[ $distro = sabotage ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
    [[ $distro = slack ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
    [[ $distro = focal ]] && vdisk=$distro.ext4		&& target=$guest.ext4
 
-[[ ! -f /data/templates/$vdisk.tar ]] && bomb there is no such distro available
+[[ ! -f /data/templates/$vdisk.tar ]] && bomb there is no such distro available: $vdisk.tar
 
 #tpl=...
 #tplname=${tpl%%\.*}
@@ -44,8 +48,7 @@ pubkey="$4"
 [[ -d $store/guests/$guest/ ]] && bomb guest with name $guest already exists
 #$store/data/guests/$guest/ already exists
 
-[[ -n `xl list | grep -E "^$guest[[:space:]]" | awk '{print $1}'` ]] && \
-	bomb guest with name $guest is already up and running
+[[ -n `xl list | grep -E "^$guest[[:space:]]" | awk '{print $1}'` ]] && bomb guest with name $guest is already up and running
 
 ping -c1 -W1 $ip >/dev/null 2>&1 && bomb $ip is already alive
 
@@ -66,35 +69,36 @@ cd $store/guests/$guest/
 
 #echo -n cloning sparse virtual disk...
 #cp --sparse=always /data/templates/$vdisk $target && \
-#	echo done || bomb failed to clone sparse file
+#	echo done || bomb
 
-echo -n extracting sparse virtual disk...
-tar xSf /data/templates/$vdisk.tar && \
-        echo done || bomb failed to extract sparse file archive
+echo -n extracting sparse virtual disk from $vdisk.tar ...
+tar xSf /data/templates/$vdisk.tar && echo done
 
-echo -n remaning sparse virtual disk...
-mv $vdisk $target && \
-	echo done || bomb failed to rename $vdisk
+echo -n renaming sparse virtual disk to $target ...
+mv $vdisk $target && echo done
 
 #echo -n checking $guest.reiser4...
 #fsck.reiser4 -yf --fix --preen $guest.reiser4 >/dev/null 2>&1 && \
-#	echo done || bomb failed to check sparse file
+#	echo done || bomb
 #echo -n mounting REISER4...
 #
 #mkdir lala/
 #mount -o loop,rw $guest.reiser4 lala/ && 
-#	echo done || bomb failed to mount sparse file
+#	echo done || bomb
 
-echo -n mouting $target...
-mount -o loop,rw $target lala/ && \
-	echo done || bomb failed to mount sparse file
+echo -n mounting $target...
+if [[ $distro = netbsd9 ]]; then
+        mount -t ufs -o ufstype=44bsd $target lala/ && echo done || bomb
+else
+	mount -o loop,rw $target lala/ && echo done || bomb
 
-# BEWARE WE ARE ERASING ALL ONLY BECAUSE THIS IS OUR TEMPLATE ANYWAYS
-echo -n deploying modules...
-mkdir -p lala/lib/modules/
-rm -rf lala/lib/modules/*
-tar xzf /data/kernels/5.2.21.domureiser4.modules.tar.gz -C lala/lib/modules/ && \
-	echo done || bomb failed to deliver TMEM kernel module within the guest
+	# THO IT HAS BEEN ADDED INTO THE TEMPLATE ALREADY
+	# BEWARE WE ARE ERASING EVERYTHING ONLY BECAUSE THIS IS OUR TEMPLATE ANYWAYS
+	echo -n deploying modules...
+	mkdir -p lala/lib/modules/
+	rm -rf lala/lib/modules/*
+	tar xzf /data/kernels/5.2.21.domureiser4.modules.tar.gz -C lala/lib/modules/ && echo done
+fi
 
 #for ball in `ls -1 /data/kernels/lib.modules.*.tar.gz`; do
 #        echo -n $ball...
@@ -102,10 +106,45 @@ tar xzf /data/kernels/5.2.21.domureiser4.modules.tar.gz -C lala/lib/modules/ && 
 #done; unset ball
 
 name=${guest#dnc-}
-nodenum=1
+
+# CENTOS
+if [[ $distro = centos ]]; then
+        echo -n hostname...
+        echo $name > lala/etc/hostname && echo done || bomb
+
+	echo -n hosts...
+	cat > lala/etc/hosts <<EOF && echo done || bomb
+127.0.0.1	localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1		localhost localhost.localdomain localhost6 localhost6.localdomain6
+$ip	$name
+EOF
+
+	echo -n resolv...
+        cat > lala/etc/resolv.conf <<EOF && echo done || bomb
+search nethence.com
+nameserver 62.210.16.6
+nameserver 62.210.16.7
+EOF
+        cp -pf lala/etc/resolv.conf lala/etc/resolv.conf.ip4
+
+	echo -n gateway...
+	cat > lala/etc/sysconfig/network <<EOF && echo done || bomb
+NETWORKING=yes
+NOZEROCONF=no
+GATEWAY=$gw
+EOF
+
+	echo -n eth0...
+	cat > lala/etc/sysconfig/network-scripts/ifcfg-eth0 <<EOF && echo done || bomb
+DEVICE=eth0
+IPADDR=$ip
+PREFIX=24
+ONBOOT=yes
+NM_CONTROLLED=no
+EOF
 
 # CRUX
-if [[ $distro = crux ]]; then
+elif [[ $distro = crux ]]; then
 	echo -n hostname...
 	mv -f lala/etc/rc.conf lala/etc/rc.conf.tmp
 	sed -r "s/HOSTNAME=.*/HOSTNAME=$name" lala/etc/rc.conf.tmp > lala/etc/rc.conf && \
@@ -122,13 +161,11 @@ if [[ $distro = crux ]]; then
 # DEBIAN
 elif [[ $distro = buster ]]; then
         echo -n hostname...
-        echo $name > lala/etc/hostname && \
-                echo done || bomb failed to deliver /etc/hostname
+        echo $name > lala/etc/hostname &&  echo done || bomb
 
         echo -n interfaces...
         #not -EOF for tabs to get there
-        cat > lala/etc/network/interfaces <<EOF && \
-                echo done || bomb failed to deliver /etc/network/interfaces
+        cat > lala/etc/network/interfaces <<EOF && echo done || bomb
 auto lo
 iface lo inet loopback
 
@@ -156,20 +193,41 @@ EOF
         #DNSStubListener=no
         #EOF
 
+# NETBSD
+
+elif [[ $distro = netbsd9 ]]; then
+	echo -n hostname...
+	echo $name > lala/etc/myname && echo done
+
+	echo -n xennet0...
+	echo inet $ip/24 up > lala/etc/ifconfig.xennet0 && echo done
+
+	echo -n gateway...
+	echo $gw > lala/etc/mygate && echo done
+
+	echo -n resolv...
+        cat > lala/etc/resolv.conf <<EOF && echo done
+search nethence.com
+nameserver 62.210.16.6
+nameserver 62.210.16.7
+EOF
+
+	echo HOT FIX FOR SSHD...
+	echo sshd=yes >> lala/etc/rc.conf && echo DONE
+
 # SABOTAGE
 elif [[ $distro = sabotage ]]; then
         echo -n hostname...
-        echo $name > lala/etc/hostname && \
-                echo done || bomb failed to deliver /etc/hostname
+        echo $name > lala/etc/hostname && echo done || bomb
 
 	echo -n rc.local network configuration...
 	mv -f lala/etc/rc.local lala/etc/rc.local.tmp
-	sed -r "s/ip=.*/ip=$ip/" lala/etc/rc.local.tmp > lala/etc/rc.local && \
-		rm -f lala/etc/rc.local.tmp && echo done || bomb could not tweak lala/etc/rc.local
+	#do_static_ip already set to true into template
+	sed -r "s/[[:space:]]ip=.*/ip=$ip/" lala/etc/rc.local.tmp > lala/etc/rc.local && rm -f lala/etc/rc.local.tmp && echo done
 	chmod +x lala/etc/rc.local
 
         echo -n resolv...
-        cat > lala/etc/resolv.conf <<EOF && echo done || bomb failed to deliver resolv.conf
+        cat > lala/etc/resolv.conf <<EOF && echo done
 search nethence.com
 nameserver 62.210.16.6
 nameserver 62.210.16.7
@@ -181,7 +239,7 @@ elif [[ $distro = slack ]]; then
 	echo $name > lala/etc/HOSTNAME && echo done
 
 	echo -n rc.inet1...
-	cat > lala/etc/rc.d/rc.inet1 <<EOF && echo done || bomb failed to deliver rc.inet1
+	cat > lala/etc/rc.d/rc.inet1 <<EOF && echo done || bomb
 #!/bin/bash
 
 echo rc.inet1 PATH is \$PATH
@@ -200,7 +258,7 @@ EOF
 	chmod +x lala/etc/rc.d/rc.inet1
 
 	echo -n resolv...
-	cat > lala/etc/resolv.conf <<EOF && echo done || bomb failed to deliver resolv.conf
+	cat > lala/etc/resolv.conf <<EOF && echo done || bomb
 search nethence.com
 nameserver 62.210.16.6
 nameserver 62.210.16.7
@@ -209,12 +267,10 @@ EOF
 # UBUNTU
 elif [[ $distro = focal ]]; then
 	echo -n hostname...
-	echo $name > lala/etc/hostname && \
-		echo done || bomb failed to deliver /etc/hostname
+	echo $name > lala/etc/hostname && echo done || bomb
 
 	echo -n netplan...
-	cat > lala/etc/netplan/nethence.yaml <<EOF && \
-		echo done || bomb failed to deliver /etc/netplan/nethence.yaml
+	cat > lala/etc/netplan/nethence.yaml <<EOF && echo done || bomb
 network:
   version: 2
   renderer: networkd
@@ -267,8 +323,7 @@ EOF
 fi
 
 echo -n hosts...
-cat > lala/etc/hosts <<-EOF && \
-	echo done || bomb failed to deliver /etc/hosts
+cat > lala/etc/hosts <<-EOF && echo done
 127.0.0.1 localhost
 
 $ip	${guest#dnc-}
@@ -289,19 +344,16 @@ EOF
 #echo tmem > lala/etc/modules && echo DONE
 
 echo -n clean host keys...
-rm -f lala/etc/ssh/ssh_host_* && \
-	echo done || bomb failed to remove host keys
+rm -f lala/etc/ssh/ssh_host_* && echo done || bomb
 
 echo -n fresh ed25519...
-ssh-keygen -q -t ed25519 -f lala/etc/ssh/ssh_host_ed25519_key -C "root@$guest" -N "" && \
-	echo done || bomb failed to deliver new host keys
+ssh-keygen -q -t ed25519 -f lala/etc/ssh/ssh_host_ed25519_key -C "root@$guest" -N "" && echo done || bomb
 
 echo -n authorized keys...
 #maybe w/o -p to make sure there's nothing from template?
 mkdir -p lala/root/.ssh/
 chmod 700 lala/root/.ssh/
-cat > lala/root/.ssh/authorized_keys <<EOF && \
-	echo done || bomb failed to deliver /root/.ssh/authorized_keys
+cat > lala/root/.ssh/authorized_keys <<EOF && echo done || bomb
 $pubkey
 
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJTdirLiqtdrVX6nJAuRV0H4oqUV2RclQaIyq/McHEHy alex@alex
@@ -311,13 +363,31 @@ EOF
 chmod 600 lala/root/.ssh/authorized_keys
 
 echo -n un-mounting...
-umount lala/ && \
-	echo done || bomb failed to un-mount $guest\'s virtual disk
+umount lala/ && echo done || bomb
+
 rmdir lala/
 
-echo -n writing guest configuration...
-cat > $guest <<EOF && \
-	echo done || echo failed to write guest configuration
+# NETBSD
+if [[ $distro = netbsd9 ]]; then
+	echo -n writing netbsd9 guest configuration...
+	cat > $guest <<EOF && echo done
+#kernel = "/data/kernels/netbsd9/netbsd-INSTALL_XEN3_DOMU.gz"
+kernel = "/data/kernels/netbsd9/netbsd-XEN3_DOMU.gz"
+root = "xbd0a"
+#extra = "-v -s"
+name = "$guest"
+memory = 1024
+vcpus = 3
+maxvcpus = 8
+disk = ['tap:tapdisk:aio:$store/guests/$guest/$guest.ffs,xvda,w']
+vif = [ 'bridge=br0,vifname=v$name.0',
+        'bridge=br0,vifname=v$name.1']
+EOF
+
+# LINUCES
+else
+	echo -n writing linuces guest configuration...
+	cat > $guest <<EOF && echo done
 kernel = "/data/kernels/5.2.21.domureiser4.vmlinuz"
 root = "/dev/xvda1 ro console=hvc0 net.ifnames=0 biosdevname=0 mitigations=off"
 name = "$guest"
@@ -325,9 +395,10 @@ vcpus = 3
 maxvcpus = 8
 memory = 7168
 disk = ['tap:tapdisk:aio:$store/guests/$guest/$target,xvda1,w']
-vif = [ 'bridge=br0, vifname=$guest.0' ]
+vif = [ 'bridge=br0, vifname=v$name.0' ]
 type = "pvh"
 EOF
+fi
 echo
 
 #absolute path in process list is a nice thing to have
