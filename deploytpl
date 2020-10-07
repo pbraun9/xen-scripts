@@ -1,15 +1,15 @@
 #!/bin/bash
 set -e
 
-#TODO - fix redundant /etc/hosts
 #TODO - scale to data2,3...
 #TODO - scale to ${ip%\.*}.1,2,3...
 #TODO - remove staff ssh keys
-#TOTO - alerts directly to monitoring instead of asking users to send an email...
-#SEC - what if this script becomes interactive for some reason (like cp -i), will user be able to answer?
+#TODO - alerts directly to monitoring
+#TODO -  what if this script becomes interactive for some reason (like cp -i), will user be able to answer?
 
 store=/data1
 nodenum=1
+maxguests=5
 
 function usage {
 	echo
@@ -27,8 +27,8 @@ function bomb {
 [[ -z $3 ]] && usage
 distro=$1
 name=$2
-guest=dnc-$2
 account=$3
+guest=dnc-$account-$2
 pubkey="$4"
 
 #name=${guest#dnc-}
@@ -37,15 +37,18 @@ pubkey="$4"
 #
 # 10.3.3.99,template,nobody
 #
+echo -n how many guests does user $account has already?...
+tmp=`grep -E ",$account$" /root/taken-ip-addresses.csv | wc -l`
+echo $tmp
+(( tmp > maxguests - 1 )) && echo you reached the maximum amount of guests allowed \($maxguests\) && exit 1
 
 sub=10.3.3
 last=`sort -V /root/taken-ip-addresses.csv | tail -1 | cut -f1 -d, | cut -f4 -d.`
 (( last > 249 )) && bomb there is no ip4 left: $sub.$last is taken
-(( tmp = last + 1 ))
-ip=$sub.$tmp
-unset tmp
+(( suffix = last + 1 ))
+ip=$sub.$suffix
 echo -n provisioning ip4 address $ip ...
-echo $ip,$name,nobody >> /root/taken-ip-addresses.csv && echo done
+echo $ip,$name,$account >> /root/taken-ip-addresses.csv && echo done
 
 gw=${ip%\.*}.$nodenum
 
@@ -164,6 +167,10 @@ umount lala/ && echo done || bomb
 
 rmdir lala/
 
+# vif has 13 chars max just like that dhclient bug
+# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=704072
+# so we cannot use full-blown guest name there
+
 # NETBSD
 if [[ $distro = netbsd9 ]]; then
 	echo -n netbsd guest configuration...
@@ -177,8 +184,8 @@ memory = 1024
 vcpus = 3
 maxvcpus = 8
 disk = ['tap:tapdisk:aio:$store/guests/$guest/$guest.ffs,xvda,w']
-vif = [ 'bridge=br0,vifname=v$name.0',
-        'bridge=br0,vifname=v$name.1']
+vif = [ 'bridge=br0,vifname=v$suffix.0',
+        'bridge=br0,vifname=v$suffix.1']
 EOF
 
 # LINUCES
@@ -192,7 +199,7 @@ vcpus = 3
 maxvcpus = 8
 memory = 7168
 disk = ['tap:tapdisk:aio:$store/guests/$guest/$target,xvda1,w']
-vif = [ 'bridge=br0, vifname=v$name.0' ]
+vif = [ 'bridge=br0, vifname=v$suffix' ]
 type = "pvh"
 EOF
 fi
