@@ -26,15 +26,16 @@ function bomb {
 #pubkey is optional
 [[ -z $3 ]] && usage
 distro=$1
-guest=$2
+name=$2
+guest=dnc-$2
 account=$3
 pubkey="$4"
 
-name=${guest#dnc-}
+#name=${guest#dnc-}
 
 # /root/taken-ip-addresses.csv format as follows:
 #
-# 10.3.3.100,template,nobody
+# 10.3.3.99,template,nobody
 #
 
 sub=10.3.3

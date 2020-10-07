@@ -26,8 +26,8 @@ function setup-netbsd {
 	nameserver 62.210.16.7
 	EOF
 
-	echo HOT FIX FOR SSHD...
-	echo sshd=yes >> lala/etc/rc.conf && echo DONE
+	# SILENT HOT FIX AGAINST TEMPLATE
+	echo sshd=yes >> lala/etc/rc.conf
 
 	echo
 }

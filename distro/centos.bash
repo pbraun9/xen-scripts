@@ -37,5 +37,10 @@ function setup-centos {
 	NM_CONTROLLED=no
 	EOF
 
+	# SILENT HOT FIX AGAINST TEMPLATE
+	mv lala/etc/selinux/config lala/etc/selinux/config.tmp
+	sed -r 's/SELINUX=permissive/SELINUX=disabled/' lala/etc/selinux/config.tmp > lala/etc/selinux/config
+	rm -f lala/etc/selinux/config.tmp
+
 	echo
 }
