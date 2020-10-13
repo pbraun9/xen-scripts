@@ -1,12 +1,6 @@
 #!/bin/bash
 set -e
 
-#TODO - scale to data2,3...
-#TODO - scale to ${ip%\.*}.1,2,3...
-#TODO - remove staff ssh keys
-#TODO - alerts directly to monitoring
-#TODO -  what if this script becomes interactive for some reason (like cp -i), will user be able to answer?
-
 store=/data1
 nodenum=1
 maxguests=5
@@ -162,6 +156,48 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM2dwM1ixasJ1a/7iVbRh46ERmOBXjxuCFM4KVdPJqqH
 EOF
 chmod 600 lala/root/.ssh/authorized_keys
 
+# NETBSD and SLACKWARE
+if [[ -x lala/usr/libexec/sftp-server ]]; then
+	sftp=/usr/libexec/sftp-server
+# UBUNTU
+elif [[ -x lala/usr/lib/openssh/sftp-server ]]; then
+	sftp=/usr/lib/openssh/sftp-server
+# SABOTAGE
+elif [[ -x lala/lib/ssh/sftp-server ]]; then
+	sftp=/lib/ssh/sftp-server
+else
+	bomb could not find sftp-server executable in $distro
+fi
+(( port = 2200 + suffix ))
+[[ -n `grep ^wheel: /etc/group` ]] && wheel=wheel || wheel=root
+
+echo -n tuning sshd for $port/tcp...
+[[ ! -f lala/etc/ssh/sshd_config.dist ]] && mv lala/etc/ssh/sshd_config lala/etc/ssh/sshd_config.dist
+cat > lala/etc/ssh/sshd_config <<EOF && echo done || bomb
+AcceptEnv LANG LC_*
+AllowGroups $wheel
+AuthenticationMethods publickey
+AuthorizedKeysFile .ssh/authorized_keys
+ChallengeResponseAuthentication no
+Ciphers aes128-gcm@openssh.com,aes128-ctr,aes192-ctr,aes256-gcm@openssh.com,aes256-ctr,chacha20-poly1305@openssh.com
+HostKey /etc/ssh/ssh_host_ed25519_key
+MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-256,hmac-sha2-512-etm@openssh.com,hmac-sha2-512
+PasswordAuthentication no
+PermitEmptyPasswords no
+PermitRootLogin without-password
+Port $port
+PrintMotd no
+Protocol 2
+StrictModes yes
+UseDNS no
+UsePAM no
+Subsystem sftp $sftp
+X11Forwarding no
+EOF
+unset sftp port wheel
+# leave a trace to the user of what we've changed
+ln -s ../etc/ssh/sshd_config lala/root/sshd_config
+
 echo -n un-mounting...
 umount lala/ && echo done || bomb
 
@@ -204,6 +240,18 @@ type = "pvh"
 EOF
 fi
 
+echo -n adding port-forwarding rule...
+/usr/sbin/nft add rule nat prerouting iif xenbr0 tcp dport $port dnat $ip && echo done
+
+echo -n updating nftables.conf...
+mkdir -p /etc/backup/
+mv -f /etc/nftables.conf /etc/backup/nftables.conf.`date +%s`
+cat > /etc/nftables.conf <<EOF
+flush ruleset
+
+EOF
+/usr/sbin/nft list ruleset >> /etc/nftables.conf echo done
+
 #absolute path in process list is a nice thing to have
 #self-verbose
 echo -n starting guest...
@@ -211,10 +259,9 @@ xl create $store/guests/$guest/$guest >> /root/deploytpl.log 2>&1 && echo done |
 
 cat <<EOF
 
- $name is booting
+ You guest $name is booting.  You can reach it through SSH on a specific tcp port.
 
-        ping $ip
-        ssh $ip -l root
+        ssh france1.nethence.com -l root -p $port
 
 EOF
 
