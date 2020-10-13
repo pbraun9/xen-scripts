@@ -1,13 +1,9 @@
 #!/bin/bash
 set -e
 
-store=/data1
-nodenum=1
-maxguests=5
-
 function usage {
 	echo
-	echo Usage: $0 \<distribution\> \<guest name\> \<account\>
+	echo usage: $0 \<distribution\> \<guest name\> \<account\>
 	echo
         exit 1
 }
@@ -16,6 +12,17 @@ function bomb {
 	echo FAIL $@
 	exit 1
 }
+
+[[ ! -f /root/deploytpl.conf ]] && bomb missing
+source /root/deploytpl.conf
+
+[[ -z $fip ]] && bomb define fip= in deploytpl.conf
+[[ -z $reverse ]] && bomb define reverse= in deploytpl.conf
+[[ -z $node ]] && bomb define node= in deploytpl.conf
+[[ -z $store ]] && bomb define store= in deploytpl.conf
+
+#TODO switch to user db...
+maxguests=5
 
 #pubkey is optional
 [[ -z $3 ]] && usage
@@ -31,6 +38,8 @@ pubkey="$4"
 #
 # 10.3.3.99,template,nobody
 #
+[[ ! -f /root/taken-ip-addresses.csv ]] && bomb need /root/taken-ip-addresses.csv:
+
 echo -n how many guests does user $account has already?...
 tmp=`grep -E ",$account$" /root/taken-ip-addresses.csv | wc -l`
 echo $tmp
@@ -44,7 +53,7 @@ ip=$sub.$suffix
 echo -n provisioning ip4 address $ip ...
 echo $ip,$name,$account >> /root/taken-ip-addresses.csv && echo done
 
-gw=${ip%\.*}.$nodenum
+gw=${ip%\.*}.$node
 
    [[ $distro = focal ]] && vdisk=$distro.ext4		&& target=$guest.ext4
   [[ $distro = centos ]] && vdisk=$distro.xfs		&& target=$guest.xfs
@@ -159,16 +168,23 @@ chmod 600 lala/root/.ssh/authorized_keys
 # NETBSD and SLACKWARE
 if [[ -x lala/usr/libexec/sftp-server ]]; then
 	sftp=/usr/libexec/sftp-server
+	pam="UsePAM no"
 # UBUNTU
 elif [[ -x lala/usr/lib/openssh/sftp-server ]]; then
 	sftp=/usr/lib/openssh/sftp-server
+	pam="UsePAM no"
 # SABOTAGE
 elif [[ -x lala/lib/ssh/sftp-server ]]; then
 	sftp=/lib/ssh/sftp-server
+	pam=""
 else
 	bomb could not find sftp-server executable in $distro
 fi
+
 (( port = 2200 + suffix ))
+[[ -z $port ]] && bomb could not define port
+echo port is $port
+
 [[ -n `grep ^wheel: /etc/group` ]] && wheel=wheel || wheel=root
 
 echo -n tuning sshd for $port/tcp...
@@ -190,11 +206,12 @@ PrintMotd no
 Protocol 2
 StrictModes yes
 UseDNS no
-UsePAM no
+$pam
 Subsystem sftp $sftp
 X11Forwarding no
 EOF
-unset sftp port wheel
+# WE NEED port VARIABLE THEREAFTER!
+unset sftp wheel
 # leave a trace to the user of what we've changed
 ln -s ../etc/ssh/sshd_config lala/root/sshd_config
 
@@ -240,8 +257,22 @@ type = "pvh"
 EOF
 fi
 
+#this requires the basic ruleset to be there
+#
+#flush ruleset
+#
+#table ip nat {
+#        chain postrouting {
+#                type nat hook postrouting priority 100;
+#                ip saddr 10.3.3.0/24 oif xenbr0 snat 212.83.171.255
+#        }
+#        chain prerouting {
+#                type nat hook prerouting priority -100;
+#        }
+#}
+
 echo -n adding port-forwarding rule...
-/usr/sbin/nft add rule nat prerouting iif xenbr0 tcp dport $port dnat $ip && echo done
+/usr/sbin/nft add rule nat prerouting iif xenbr0 ip daddr $fip tcp dport $port dnat $ip && echo done || bomb
 
 echo -n updating nftables.conf...
 mkdir -p /etc/backup/
@@ -250,7 +281,7 @@ cat > /etc/nftables.conf <<EOF
 flush ruleset
 
 EOF
-/usr/sbin/nft list ruleset >> /etc/nftables.conf echo done
+/usr/sbin/nft list ruleset >> /etc/nftables.conf && echo done || bomb
 
 #absolute path in process list is a nice thing to have
 #self-verbose
@@ -259,9 +290,13 @@ xl create $store/guests/$guest/$guest >> /root/deploytpl.log 2>&1 && echo done |
 
 cat <<EOF
 
- You guest $name is booting.  You can reach it through SSH on a specific tcp port.
+ You guest $name is booting.  You can reach it through SSH on IPv6 (possibly through a 4to6 tunnel)
 
-        ssh france1.nethence.com -l root -p $port
+	ssh ...TODO... -l root -p $port
+
+or IPv4 and through port-forwarding
+
+        ssh $reverse -l root -p $port
 
 EOF
 
