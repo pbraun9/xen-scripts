@@ -1,0 +1,125 @@
+#!/bin/ksh
+
+#
+# _this is a totally unsecure shell-based PoC for nobudget w/o any string validation_
+#
+
+function ruler {
+	until (( i == 10 )); do
+	        print =\\c
+	        let i++
+	done
+}
+
+function bomb {
+	echo
+	echo Error: $@
+	echo
+	echo Press any key to exit
+	echo
+	read
+	exit 1
+}
+
+#node=pro5s2
+[[ ! -f $HOME/nobduget-shell.conf ]] && echo missing $HOME/nobduget-shell.conf && exit 1
+. $HOME/nobduget-shell.conf
+
+[[ -z $node ]] && echo define node in $HOME/nobduget-shell.conf && exit 1
+
+ruler >> $HOME/deployw.log
+date >> $HOME/deployw.log
+
+clear
+
+function askdistro {
+	cat <<EOF
+
+ Welcome to Definitely Not a Cloud
+ _nobudget-shell PoC_
+
+ Conventional choices
+
+  1. Ubuntu Focal
+  2. Debian Buster
+  3. CentOS Stream 8.2
+
+ Exotic choices
+
+  4. Slackware Linux current (Sep 2020)
+  5. NetBSD 9 branch (Oct 2020)
+  6. CRUX 3.5
+  7. Sabotage Linux
+
+EOF
+# Slackware64 14.2 (REISER4 TMEM 8GB)
+# Stretch (REISER4 TMEM 8GB)
+# Ubuntu Bionic (EXT4 TMEM 8GB / netplan ipv6 resolved disabled)
+# NetBSD 8 (FFS 256MB / two NICs)
+# Ubuntu Xenial (two NICs)
+
+	print " What type of guest would you like to deploy? \c"
+	read -r tmp
+	distro=`echo "$distro" | sed 's/[^[:digit:]]//g'`
+}
+
+askdistro
+case $tmp in
+        1) distro=focal ;;
+        2) distro=buster ;;
+        3) distro=centos ;;
+	4) distro=slack ;;
+	5) distro=netbsd9 ;;
+        6) distro=crux ;;
+	7) distro=sabotage ;;
+        *) askdistro ;;
+esac
+unset tmp
+
+print " What guest name / hostname? \c"
+read -r guestname
+guestname=`echo "$guestname" | sed 's/[^[:alnum:]-]//g'`
+[[ -z $guestname ]] && bomb \$guestname is empty
+#[[ $guestname = eth* ]] && bomb guest name cannot start with eth
+(( `echo -n $guestname | wc -c` > 13 )) && bomb guest name cannot be more than 12 characters
+
+#print " What 10.3.3.0/24 IP address? \c"
+#read -r ipaddr
+#ipaddr=`echo "$ipaddr" | sed 's/[^[:alnum:]]^\.//g'`
+#[[ -z $ipaddr ]] && bomb \$ipaddr is empty
+
+cat <<EOF
+
+ If you don't already have one, please generate an SSH key-pair
+
+	ssh-keygen -t ed25519
+
+ and share the public key
+
+	cat ~/.ssh/id_ed25519.pub
+
+EOF
+print " Your public key please, with your name or email as comment: \c"
+read -r pubkey
+pubkey=`echo "$pubkey" | sed 's/[^[:alnum:]]^ //g'`
+
+cat <<EOF | tee -a $HOME/deployw.log
+
+ distribution: $distro
+   guest name: $guestname
+   public key: $pubkey
+
+EOF
+#   ip address: $ipaddr
+
+time ssh $node /root/xen/deploytpl $distro $guestname nobody "$pubkey" | tee -a $HOME/deployw.log
+
+echo ''
+echo " Press any key to exit" 
+echo ''
+
+read
+# TODO any key pressed before makes it exit...
+
+# https://stackoverflow.com/questions/43030991/korn-shell-how-can-i-make-press-any-key-to-continue
+
