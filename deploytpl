@@ -13,6 +13,10 @@ function bomb {
 	exit 1
 }
 
+#fip=212.83.171.255
+#reverse=france2.nethence.com
+#node=2
+#store=/data2
 [[ ! -f /root/deploytpl.conf ]] && bomb missing
 source /root/deploytpl.conf
 
@@ -294,7 +298,7 @@ cat <<EOF
 
 	ssh ...TODO... -l root -p $port
 
-or IPv4 and through port-forwarding
+ or IPv4 and through port-forwarding
 
         ssh $reverse -l root -p $port
 
