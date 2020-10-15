@@ -10,6 +10,8 @@ function setup-ubuntu {
 
 	$ip	$name
 	$gw	gw
+	62.210.16.6	dns1
+	62.210.16.7	dns2
 
 	::1     localhost ip6-localhost ip6-loopback
 	ff02::1 ip6-allnodes
@@ -27,7 +29,7 @@ function setup-ubuntu {
 	      dhcp6: no
 	      addresses:
 	        - $ip/24
-	      gateway4: ${ip%\.*}.$nodenum
+	      gateway4: ${ip%\.*}.$node
 	      nameservers:
 	        search: [nethence.com]
 	        addresses: [62.210.16.6, 62.210.16.7]

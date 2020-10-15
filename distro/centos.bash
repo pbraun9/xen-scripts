@@ -11,6 +11,8 @@ function setup-centos {
 
 	$ip	$name
 	$gw	gw
+	62.210.16.6     dns1
+	62.210.16.7     dns2
 	EOF
 
 	echo -n resolv...

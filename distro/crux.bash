@@ -11,6 +11,8 @@ function setup-crux {
 
 	$ip	$name
 	$gw	gw
+	62.210.16.6     dns1
+	62.210.16.7     dns2
 
 	::1            ip6-localhost   ip6-loopback
 	fe00::0        ip6-localnet
