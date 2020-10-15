@@ -33,7 +33,7 @@ maxguests=5
 distro=$1
 name=$2
 account=$3
-guest=dnc-$account-$2
+guest=dnc-$account-$name
 pubkey="$4"
 
 #name=${guest#dnc-}
@@ -163,9 +163,9 @@ chmod 700 lala/root/.ssh/
 cat > lala/root/.ssh/authorized_keys <<EOF && echo done || bomb
 $pubkey
 
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJTdirLiqtdrVX6nJAuRV0H4oqUV2RclQaIyq/McHEHy alex@alex
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMNWddNzcz/4w/B5fWTuMDO1jGyuWJhCn0j0WAD1/Pcf elge@extensa
-ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM2dwM1ixasJ1a/7iVbRh46ERmOBXjxuCFM4KVdPJqqH alex@france1
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJTdirLiqtdrVX6nJAuRV0H4oqUV2RclQaIyq/McHEHy alex@alex
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDWBi3tOUvvRoKxxicZfAR5etbDpC56VSbiN+Z2bZ6Ph timur
 EOF
 chmod 600 lala/root/.ssh/authorized_keys
 
@@ -180,7 +180,7 @@ elif [[ -x lala/usr/lib/openssh/sftp-server ]]; then
 # SABOTAGE
 elif [[ -x lala/lib/ssh/sftp-server ]]; then
 	sftp=/lib/ssh/sftp-server
-	pam=""
+	pam="#no pam support"
 else
 	bomb could not find sftp-server executable in $distro
 fi
@@ -274,7 +274,6 @@ fi
 #                type nat hook prerouting priority -100;
 #        }
 #}
-
 echo -n adding port-forwarding rule...
 /usr/sbin/nft add rule nat prerouting iif xenbr0 ip daddr $fip tcp dport $port dnat $ip && echo done || bomb
 
