@@ -31,5 +31,10 @@ function setup-netbsd {
 	# SILENT HOT FIX AGAINST TEMPLATE
 	echo sshd=yes >> lala/etc/rc.conf
 
+	cat > lala/etc/rc.local <<-EOF
+	echo -n 'Starting local daemons:'
+	echo '.'
+	EOF
+
 	echo
 }

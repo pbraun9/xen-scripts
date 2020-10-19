@@ -208,6 +208,7 @@ ChallengeResponseAuthentication no
 Ciphers aes128-gcm@openssh.com,aes128-ctr,aes192-ctr,aes256-gcm@openssh.com,aes256-ctr,chacha20-poly1305@openssh.com
 HostKey /etc/ssh/ssh_host_ed25519_key
 MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-256,hmac-sha2-512-etm@openssh.com,hmac-sha2-512
+MaxAuthTries 1
 PasswordAuthentication no
 PermitEmptyPasswords no
 PermitRootLogin without-password
@@ -348,10 +349,12 @@ cat <<EOF
 
  You guest $name is booting.  You can reach it through SSH on IPv6 (possibly through a 4to6 tunnel)
 
+	ping6 ...TODO...
 	ssh ...TODO... -l root -p $port
 
  or IPv4 and through port-forwarding
 
+	nmap -p $port $reverse
         ssh $reverse -l root -p $port
 
 EOF
