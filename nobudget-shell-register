@@ -1,0 +1,75 @@
+#!/bin/ksh
+
+#
+# _this is a totally unsecure shell-based PoC for nobudget w/o much string validation_
+#
+
+function ruler {
+	until (( i == 10 )); do
+	        print =\\c
+	        let i++
+	done
+}
+
+function bomb {
+	echo
+	echo Error: $@
+	echo
+	echo Press any key to exit
+	echo
+	read
+	exit 1
+}
+
+#node=pro5s2
+[[ ! -f $HOME/nobduget-shell.conf ]] && echo missing $HOME/nobduget-shell.conf && exit 1
+. $HOME/nobduget-shell.conf
+
+[[ -z $node ]] && echo define node in $HOME/nobduget-shell.conf && exit 1
+
+ruler >> $HOME/registerw.log
+date >> $HOME/registerw.log
+
+clear
+cat <<EOF
+
+ Welcome to Definitely Not a Cloud
+ _nobudget-shell-register PoC_
+
+ To register, we will need those informations from you:
+
+  - name
+  - email
+  - SSH public key (preferably ed25519)
+
+ Let's proceed?
+
+EOF
+#  - phone number
+read
+
+print Please enter your name and surname: \\c
+read -r name
+name=`echo "$name" | sed -r 's/[^[:alnum:]- ]//g'`
+[[ -z $name ]] && bomb name empty or illegal chars
+
+print Please enter your email address: \\c
+read -r email
+email=`echo "$email" | sed -r 's/[^[:alnum:]- ]//g'`
+[[ -z $name ]] && bomb email empty or illegal chars
+
+print Please copy/paste your SSH public key: \\c
+read -r pubkey
+pubkey=`echo "$pubkey" | sed -r 's/[^[:alnum:]- ]//g'`
+
+echo -n registering $email...
+cat >> $HOME/customers.csv <<EOF && echo done || echo FAIL
+$name,$email,$pubkey
+EOF
+
+echo
+echo " Press any key to exit"
+echo
+
+read
+

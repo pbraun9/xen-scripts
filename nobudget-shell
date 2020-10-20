@@ -1,15 +1,8 @@
 #!/bin/ksh
 
 #
-# _this is a totally unsecure shell-based PoC for nobudget w/o any string validation_
+# _this is a totally unsecure shell-based PoC for nobudget w/o much string validation_
 #
-
-function ruler {
-	until (( i == 10 )); do
-	        print =\\c
-	        let i++
-	done
-}
 
 function bomb {
 	echo
@@ -27,8 +20,8 @@ function bomb {
 
 [[ -z $node ]] && echo define node in $HOME/nobduget-shell.conf && exit 1
 
-ruler >> $HOME/deployw.log
-date >> $HOME/deployw.log
+echo ========== >> $HOME/nobudget-shell.log
+date >> $HOME/nobudget-shell.log
 
 clear
 
@@ -60,7 +53,8 @@ EOF
 
 	print " What type of guest would you like to deploy? \c"
 	read -r tmp
-	distro=`echo "$distro" | sed 's/[^[:digit:]]//g'`
+	tmp=`echo "$tmp" | sed 's/[^[:digit:]]//g'`
+	[[ -z $tmp ]] && askdistro
 }
 
 askdistro
@@ -82,11 +76,6 @@ guestname=`echo "$guestname" | sed 's/[^[:alnum:]-]//g'`
 [[ -z $guestname ]] && bomb \$guestname is empty
 #[[ $guestname = eth* ]] && bomb guest name cannot start with eth
 (( `echo -n $guestname | wc -c` > 13 )) && bomb guest name cannot be more than 12 characters
-
-#print " What 10.3.3.0/24 IP address? \c"
-#read -r ipaddr
-#ipaddr=`echo "$ipaddr" | sed 's/[^[:alnum:]]^\.//g'`
-#[[ -z $ipaddr ]] && bomb \$ipaddr is empty
 
 cat <<EOF
 
@@ -110,16 +99,12 @@ cat <<EOF | tee -a $HOME/deployw.log
    public key: $pubkey
 
 EOF
-#   ip address: $ipaddr
 
 time ssh $node /root/xen/deploytpl $distro $guestname nobody "$pubkey" | tee -a $HOME/deployw.log
 
-echo ''
+echo
 echo " Press any key to exit" 
-echo ''
+echo
 
 read
-# TODO any key pressed before makes it exit...
-
-# https://stackoverflow.com/questions/43030991/korn-shell-how-can-i-make-press-any-key-to-continue
 
