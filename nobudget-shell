@@ -20,6 +20,9 @@ function bomb {
 
 [[ -z $node ]] && echo define node in $HOME/nobduget-shell.conf && exit 1
 
+[[ -z $1 ]] && $0 needs to be started with \$userid as argument && exit 1
+userid=$1
+
 echo ========== >> $HOME/nobudget-shell.log
 date >> $HOME/nobudget-shell.log
 
@@ -40,9 +43,10 @@ function askdistro {
  Exotic choices
 
   4. Slackware Linux current (Sep 2020)
-  5. NetBSD 9 branch (Oct 2020)
+  5. NetBSD current (Oct 2020)
   6. CRUX 3.5
   7. Sabotage Linux
+  8. FreeBSD 13.0 ZFS
 
 EOF
 # Slackware64 14.2 (REISER4 TMEM 8GB)
@@ -66,41 +70,28 @@ case $tmp in
 	5) distro=netbsd9 ;;
         6) distro=crux ;;
 	7) distro=sabotage ;;
+	8) distro=freebsdzfs ;;
         *) askdistro ;;
 esac
 unset tmp
 
-print " What guest name / hostname? \c"
+print " What hostname? \c"
 read -r guestname
-guestname=`echo "$guestname" | sed 's/[^[:alnum:]-]//g'`
+guestname=`echo "$guestname" | sed -r 's/[^[:alnum:]-]//g'`
 [[ -z $guestname ]] && bomb \$guestname is empty
-#[[ $guestname = eth* ]] && bomb guest name cannot start with eth
-(( `echo -n $guestname | wc -c` > 13 )) && bomb guest name cannot be more than 12 characters
 
-cat <<EOF
+#we are not limiting this according to the nic device naming, but anyhow it's good not to have too long guest names
+#besides, that part of the true guest name can be redundant as many customers may choose the same, no problem with that
+(( `echo -n $guestname | wc -c` > 14 )) && bomb guest name cannot be more than 13 characters
 
- If you don't already have one, please generate an SSH key-pair
+cat <<EOF | tee -a $HOME/nobudget-shell.log
 
-	ssh-keygen -t ed25519
-
- and share the public key
-
-	cat ~/.ssh/id_ed25519.pub
-
-EOF
-print " Your public key please, with your name or email as comment: \c"
-read -r pubkey
-pubkey=`echo "$pubkey" | sed 's/[^[:alnum:]]^ //g'`
-
-cat <<EOF | tee -a $HOME/deployw.log
-
- distribution: $distro
-   guest name: $guestname
-   public key: $pubkey
+   system: $distro
+ hostname: $guestname
 
 EOF
 
-time ssh $node /root/xen/deploytpl $distro $guestname nobody "$pubkey" | tee -a $HOME/deployw.log
+time ssh $node /root/xen/deploytpl $distro $guestname $userid | tee -a $HOME/nobudget-shell.log
 
 echo
 echo " Press any key to exit" 

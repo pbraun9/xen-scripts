@@ -4,13 +4,6 @@
 # _this is a totally unsecure shell-based PoC for nobudget w/o much string validation_
 #
 
-function ruler {
-	until (( i == 10 )); do
-	        print =\\c
-	        let i++
-	done
-}
-
 function bomb {
 	echo
 	echo Error: $@
@@ -27,8 +20,8 @@ function bomb {
 
 [[ -z $node ]] && echo define node in $HOME/nobduget-shell.conf && exit 1
 
-ruler >> $HOME/registerw.log
-date >> $HOME/registerw.log
+echo ========== >> $HOME/nobudget-shell-register.log
+date >> $HOME/nobudget-shell-register.log
 
 clear
 cat <<EOF
@@ -48,19 +41,19 @@ EOF
 #  - phone number
 read
 
-print Please enter your name and surname: \\c
+print Firstname and surname: \\c
 read -r name
-name=`echo "$name" | sed -r 's/[^[:alnum:]- ]//g'`
+name=`echo "$name" | sed -r 's/[^[:alnum:] -]//g'`
 [[ -z $name ]] && bomb name empty or illegal chars
 
-print Please enter your email address: \\c
+print Email address: \\c
 read -r email
-email=`echo "$email" | sed -r 's/[^[:alnum:]- ]//g'`
+email=`echo "$email" | sed -r 's/[^[:alnum:] -@]//g'`
 [[ -z $name ]] && bomb email empty or illegal chars
 
-print Please copy/paste your SSH public key: \\c
+print SSH public key: \\c
 read -r pubkey
-pubkey=`echo "$pubkey" | sed -r 's/[^[:alnum:]- ]//g'`
+pubkey=`echo "$pubkey" | sed -r 's/[^[:alnum:] -/@]//g'`
 
 echo -n registering $email...
 cat >> $HOME/customers.csv <<EOF && echo done || echo FAIL
@@ -68,7 +61,7 @@ $name,$email,$pubkey
 EOF
 
 echo
-echo " Press any key to exit"
+echo Press any key to exit
 echo
 
 read
