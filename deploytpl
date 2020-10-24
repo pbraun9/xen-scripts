@@ -68,9 +68,10 @@ gw=${ip%\.*}.$node
   [[ $distro = buster ]] && vdisk=$distro.ext4		&& target=$guest.ext4
 
    [[ $distro = slack ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
- [[ $distro = netbsd9 ]] && vdisk=$distro.ffs		&& target=$guest.ffs
+  [[ $distro = netbsd ]] && vdisk=$distro.ffs		&& target=$guest.ffs
     [[ $distro = crux ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
 [[ $distro = sabotage ]] && vdisk=$distro.reiser4	&& target=$guest.reiser4
+[[ $distro = freebsdzfs ]] && vdisk=$distro.zfs		&& target=$guest.zfs
 
 [[ ! -f /data/templates/$vdisk.tar ]] && bomb there is no such distro available: $vdisk.tar
 
@@ -119,8 +120,26 @@ mv $vdisk $target && echo done
 #	echo done || bomb
 
 echo -n mounting $target...
-if [[ $distro = netbsd9 ]]; then
+if [[ $distro = netbsd ]]; then
         mount -t ufs -o ufstype=44bsd $target lala/ && echo done || bomb
+elif [[ $distro = freebsdzfs ]]; then
+	# TODO deploy freebsdzfs guests concurrently
+	# ...maybe by renaming pools?
+	if [[ "`zpool list`" = "no pools available" ]]; then
+		echo -n setting up the loop device...
+		loopdevice=`losetup --find --partscan --show $target` && echo done || bomb
+
+		echo -n getting to know about the pool...
+		rmdir lala/
+		mkdir lili/
+		zpool import tank -R `pwd`/lili/ && echo done || bomb
+
+		#WTF
+		echo -n symlink fixup...
+		ln -s lili/root/guests/freebsdzfs/lala && echo done || bomb
+	else
+		bomb concurrent freebsdzfs deployment - cannot proceed
+	fi
 else
 	mount -o loop,rw $target lala/ && echo done || bomb
 
@@ -142,9 +161,10 @@ case $distro in
         buster)		source /root/xen/distro/debian.bash	&& setup-debian ;;
         centos)		source /root/xen/distro/centos.bash	&& setup-centos ;;
         slack)		source /root/xen/distro/slackware.bash	&& setup-slackware ;;
-        netbsd9)	source /root/xen/distro/netbsd.bash	&& setup-netbsd ;;
+        netbsd)		source /root/xen/distro/netbsd.bash	&& setup-netbsd ;;
         crux)		source /root/xen/distro/crux.bash	&& setup-crux ;;
         sabotage)	source /root/xen/distro/sabotage.bash	&& setup-sabotage ;;
+        freebsdzfs)	source /root/xen/distro/freebsd.bash	&& setup-freebsd ;;
         *)		bomb wrong distro: $distro ;;
 esac
 
@@ -158,7 +178,7 @@ echo -n wipe-out host keys...
 rm -f lala/etc/ssh/ssh_host_* && echo done || bomb
 
 echo -n fresh ed25519...
-ssh-keygen -q -t ed25519 -f lala/etc/ssh/ssh_host_ed25519_key -C "root@$guest" -N "" && echo done || bomb
+ssh-keygen -q -t ed25519 -f lala/etc/ssh/ssh_host_ed25519_key -C "root@$name " -N "" && echo done || bomb
 
 echo -n authorized keys...
 #maybe w/o -p to make sure there's nothing from template?
@@ -175,7 +195,7 @@ ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINck2Wn4DU8l0MZ//ASOdrh/jYdgv7CobLcm3265rZn8
 EOF
 chmod 600 lala/root/.ssh/authorized_keys
 
-# NETBSD and SLACKWARE
+# NETBSD SLACKWARE FREEBSD
 if [[ -x lala/usr/libexec/sftp-server ]]; then
 	sftp=/usr/libexec/sftp-server
 	pam="UsePAM no"
@@ -191,7 +211,7 @@ else
 	bomb could not find sftp-server executable in $distro
 fi
 
-(( port = 2200 + suffix ))
+(( port = 2000 + suffix ))
 [[ -z $port ]] && bomb could not define port
 echo port is $port
 
@@ -199,8 +219,9 @@ echo port is $port
 
 echo -n tuning sshd for $port/tcp...
 [[ ! -f lala/etc/ssh/sshd_config.dist ]] && mv lala/etc/ssh/sshd_config lala/etc/ssh/sshd_config.dist
+[[ ! -f lala/etc/ssh/sshd_config.clean ]] && \
+	grep -vE '^[[:space:]]*(#|$)' lala/etc/ssh/sshd_config.dist > lala/etc/ssh/sshd_config.clean
 cat > lala/etc/ssh/sshd_config <<EOF && echo done || bomb
-AcceptEnv LANG LC_*
 AllowGroups $wheel
 AuthenticationMethods publickey
 AuthorizedKeysFile .ssh/authorized_keys
@@ -223,24 +244,35 @@ X11Forwarding no
 EOF
 # WE NEED port VARIABLE THEREAFTER!
 unset sftp wheel
-# leave a trace to the user of what we've changed
-ln -s ../etc/ssh/sshd_config lala/root/sshd_config
+# SILENT HOT FIX
+rm -f lala/root/sshd_config
 
-echo -n un-mounting...
-umount lala/ && echo done || bomb
+if [[ $distro = freebsdzfs ]]; then
+	echo -n forgetting that pool...
+	zpool export tank && echo done || bomb
+	rm -f lala
+	rm -rf lili/
+	#rmdir lili
 
-rmdir lala/
+	echo -n getting rid of the loop device...
+	losetup -d $loopdevice && echo done || bomb
+	unset loopdevice
+else
+	echo -n umount...
+	umount lala/ && echo done || bomb
+	rmdir lala/
+fi
 
 # vif has 13 chars max just like that dhclient bug
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=704072
 # so we cannot use full-blown guest name there
 
 # NETBSD
-if [[ $distro = netbsd9 ]]; then
+if [[ $distro = netbsd ]]; then
 	echo -n netbsd guest configuration...
 	cat > $guest <<EOF && echo done
-#kernel = "/data/kernels/netbsd9/netbsd-INSTALL_XEN3_DOMU.gz"
-kernel = "/data/kernels/netbsd9/netbsd-XEN3_DOMU.gz"
+#kernel = "/data/kernels/netbsd-current/netbsd-INSTALL_XEN3_DOMU.gz"
+kernel = "/data/kernels/netbsd-current/netbsd-XEN3_DOMU.gz"
 root = "xbd0a"
 #extra = "-v -s"
 name = "$guest"
@@ -250,6 +282,23 @@ maxvcpus = 8
 disk = ['tap:tapdisk:aio:$store/guests/$guest/$guest.ffs,xvda,w']
 vif = [ 'bridge=br0,vifname=v$suffix.0',
         'bridge=br0,vifname=v$suffix.1']
+type = "pvh"
+EOF
+
+# FREEBSD - specific ZFS built-in kernel here
+elif [[ $distro = freebsdzfs ]]; then
+        echo -n freebsdzfs guest configuration...
+        cat > $guest <<EOF && echo done
+kernel = "/data/kernels/kernel-zfs"
+extra = "vfs.root.mountfrom=zfs:tank/root"
+memory = 7168
+name = "$guest"
+vcpus = 3
+maxvcpus = 8
+disk = ['tap:tapdisk:aio:$store/guests/$guest/$guest.zfs,xvda,w']
+vif = [ 'bridge=br0, vifname=$suffix.0',
+	'bridge=br0, vifname=$suffix.1' ]
+type = "pvh"
 EOF
 
 # LINUCES
