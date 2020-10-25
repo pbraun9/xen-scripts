@@ -15,8 +15,8 @@ function bomb {
 }
 
 #node=pro5s2
-[[ ! -f $HOME/nobduget-shell.conf ]] && echo missing $HOME/nobduget-shell.conf && exit 1
-. $HOME/nobduget-shell.conf
+[[ ! -f $HOME/nobudget-shell.conf ]] && echo missing $HOME/nobudget-shell.conf && exit 1
+. $HOME/nobudget-shell.conf
 
 [[ -z $node ]] && echo define node in $HOME/nobduget-shell.conf && exit 1
 
