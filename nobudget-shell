@@ -20,7 +20,7 @@ function bomb {
 
 [[ -z $node ]] && echo define node in $HOME/nobduget-shell.conf && exit 1
 
-[[ -z $1 ]] && $0 needs to be started with \$userid as argument && exit 1
+[[ -z $1 ]] && echo $0 needs to be started with user ID as argument && exit 1
 userid=$1
 
 echo ========== >> $HOME/nobudget-shell.log
@@ -32,7 +32,8 @@ function askdistro {
 	cat <<EOF
 
  Welcome to Definitely Not a Cloud
- _nobudget-shell PoC_
+
+      _nobudget-shell PoC_
 
  Conventional choices
 
@@ -67,7 +68,7 @@ case $tmp in
         2) distro=buster ;;
         3) distro=centos ;;
 	4) distro=slack ;;
-	5) distro=netbsd9 ;;
+	5) distro=netbsd ;;
         6) distro=crux ;;
 	7) distro=sabotage ;;
 	8) distro=freebsdzfs ;;
@@ -88,6 +89,7 @@ cat <<EOF | tee -a $HOME/nobudget-shell.log
 
    system: $distro
  hostname: $guestname
+  user id: $userid
 
 EOF
 
