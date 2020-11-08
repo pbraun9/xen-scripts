@@ -11,15 +11,18 @@ function setup-slackware {
 
 	$ip	$name
 	$gw	gw
-	62.210.16.6     dns1
-	62.210.16.7     dns2
+	$ip6	$name
+
+	2001:bc8:401::3	dns1
+	2001:bc8:1::16	dns2
+	#62.210.16.6     dns1
+	#62.210.16.7     dns2
 	EOF
 
 	echo -n resolv...
 	cat > lala/etc/resolv.conf <<-EOF && echo done || bomb
-	search nethence.com
-	nameserver 62.210.16.6
-	nameserver 62.210.16.7
+	nameserver 2001:bc8:401::3
+	nameserver 2001:bc8:1::16
 	EOF
 
 	# BEWARE OF ESCAPES HERE
@@ -31,11 +34,14 @@ function setup-slackware {
 	 echo -n lo...
 	 ifconfig lo up && echo done || echo FAIL
 
-	 echo -n eth0...
+	 echo -n ipv4...
 	 ifconfig eth0 $ip/24 up && echo done || echo FAIL
 
-	 echo -n default route...
+	 echo -n ipv4 default route...
 	 route add default gw $gw && echo done || echo FAIL
+
+	 echo -n ipv6...
+	 ifconfig eth0 inet6 add $ip6/64 && echo done || echo FAIL
 	fi
 	EOF
 	chmod +x lala/etc/rc.d/rc.inet1

@@ -63,6 +63,8 @@ echo $ip,$name,$account >> /root/taken-ip-addresses.csv && echo done
 
 gw=${ip%\.*}.$node
 
+ip6=2001:bc8:204a:101::$suffix
+
    [[ $distro = focal ]] && vdisk=$distro.ext4		&& target=$guest.ext4
   [[ $distro = centos ]] && vdisk=$distro.xfs		&& target=$guest.xfs
   [[ $distro = buster ]] && vdisk=$distro.ext4		&& target=$guest.ext4
@@ -344,7 +346,7 @@ EOF
 
 # careful with escapes here
 echo -n adding nginx vhost...
-cat > /etc/nginx/nginx.conf.d/$name.conf <<EOF && echo done || bomb
+cat > /etc/nginx/conf.d/$name.conf <<EOF && echo done || bomb
 server {
         listen 80;
         listen [::]:80;
