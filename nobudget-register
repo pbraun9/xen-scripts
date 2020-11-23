@@ -1,0 +1,96 @@
+#!/bin/ksh
+
+#
+# Temporary shell-based PoC for nobudget
+#
+
+debug=1
+
+function bomb {
+        print
+        print Error: $@
+        print
+        print Press any key to exit
+        print
+        read -r
+        exit 1
+}
+
+function debug {
+	(( debug != 1 )) && return
+
+	print DEBUG: $1 is \\c
+	eval "print \$$1"
+}
+
+function askemail {
+	print
+	print Please enter your email: \\c
+	read -r tmp
+	tmp2=`echo "$tmp" | sed -r 's/[^[:alnum:]_.@-]//g'`
+	email=`echo "$tmp2" | grep -E '^[[:alnum:]]+@[[:alnum:]_.-]+\.[[:alpha:]]+$'`
+	if [[ -z "$tmp" || -z "$tmp2" || -z "$email" || "$tmp" != "$tmp2" || "$email" != "$tmp" ]]; then
+		debug tmp
+		debug tmp2
+		debug email
+
+		print
+		print You have entered invalid characters
+		print 
+		print Press any key to retry
+		print
+		read -r
+		askemail
+	fi
+	unset tmp tmp2
+}
+
+function askpubkey {
+	print
+	print Please enter your SSH public key \(one line\):
+	read -r tmp
+	tmp2=`echo "$tmp" | sed -r 's/[^[:alnum:] _./@-]//g'`
+        pubkey=`echo "$tmp2" | grep -E '^[[:alnum:] _./@-]+'`
+        if [[ -z "$tmp" || -z "$tmp2" || -z "$pubkey" || "$tmp" != "$tmp2" || "$pubkey" != "$tmp" ]]; then
+                debug tmp
+                debug tmp2
+                debug pubkey
+
+                print
+                print You have entered invalid characters
+                print
+                print Press any key to retry
+                print
+                read -r
+                askpubkey
+        fi
+        unset tmp tmp2
+}
+
+#[[ ! -x `whence $HOME/nobudget/registeruser` ]] && bomb $HOME/nobudget/registeruser executable missing
+
+clear
+cat <<EOF
+
+ Welcome to Definitely Not a Cloud
+
+ REGISTRATION FORM (Proof of Concept)
+
+ You will be asked for the following information:
+
+	o  Your email address
+
+	o  The SSH public key you are going to authenticate with (preferably ed25519)
+
+ Press any key to continue
+
+EOF
+#  - phone number
+read -r
+
+askemail
+
+askpubkey
+
+echo $HOME/nobudget/registeruser -u $email -k $pubkey
+
