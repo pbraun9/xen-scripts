@@ -201,6 +201,12 @@ chmod 600 lala/root/.ssh/authorized_keys
 if [[ -x lala/usr/libexec/sftp-server ]]; then
 	sftp=/usr/libexec/sftp-server
 	pam="UsePAM no"
+
+# CENTOS
+elif [[ -x lala/usr/libexec/openssh/sftp-server ]]; then
+        sftp=/usr/lib/openssh/sftp-server
+        pam="UsePAM no"
+
 # UBUNTU
 elif [[ -x lala/usr/lib/openssh/sftp-server ]]; then
 	sftp=/usr/lib/openssh/sftp-server
@@ -273,8 +279,9 @@ fi
 if [[ $distro = netbsd ]]; then
 	echo -n netbsd guest configuration...
 	cat > $guest <<EOF && echo done
-#kernel = "/data/kernels/netbsd-current/netbsd-INSTALL_XEN3_DOMU.gz"
-kernel = "/data/kernels/netbsd-current/netbsd-XEN3_DOMU.gz"
+#kernel = "/data/kernels/netbsd-current/netbsd-INSTALL.gz"
+kernel = "/data/kernels/netbsd-current/netbsd-GENERIC.gz"
+#kernel = "/data/kernels/netbsd-current/netbsd-GENERIC_KASLR.gz"
 root = "xbd0a"
 #extra = "-v -s"
 name = "$guest"
@@ -388,6 +395,7 @@ server {
 }
 EOF
 
+# DNS wildcard points to IP4 round-robin pool
 echo -n reloading nginx...
 /usr/local/sbin/nginx -s reload && echo done || bomb
 
@@ -400,8 +408,8 @@ cat <<EOF
 
  You guest $name is booting.  You can reach it through SSH on IPv6 (possibly through a 4to6 tunnel)
 
-	ping6 ...TODO...
-	ssh ...TODO... -l root -p $port
+	ping6 $ip6
+	ssh $ip6 -l root -p $port
 
  or IPv4 and through port-forwarding
 
@@ -409,4 +417,15 @@ cat <<EOF
         ssh $reverse -l root -p $port
 
 EOF
+
+#STATUS:BOOTING
+#HOSTNAME:$name
+#(DATASTORE:$store)
+#(XEN GUEST NAME:$guest)
+#IP:$ip
+#GW:$gw
+#IP6: coming soon
+#FAILOVERIP:$fip
+#REVERSE:$reverse
+#PORT-FWD:$port
 
