@@ -14,26 +14,27 @@ function bomb {
 	exit 1
 }
 
-#node=pro5s2
-[[ ! -f $HOME/nobudget-shell.conf ]] && echo missing $HOME/nobudget-shell.conf && exit 1
-. $HOME/nobudget-shell.conf
-
-[[ -z $node ]] && echo define node in $HOME/nobduget-shell.conf && exit 1
-
-[[ -z $1 ]] && echo $0 needs to be started with user ID as argument && exit 1
-userid=$1
-
-echo ========== >> $HOME/nobudget-shell.log
-date >> $HOME/nobudget-shell.log
-
-clear
-
-function askdistro {
+function header {
+	clear
 	cat <<EOF
 
- Welcome to Definitely Not a Cloud
+        Definitely Not a Cloud
+          (Proof of Concept)
 
-      _nobudget-shell PoC_
+EOF
+}
+
+function presscontinue {
+        print
+        print " Press any key to continue\c"
+        read -r
+}
+
+function askdistro {
+	header
+	cat <<EOF
+
+	CREATE GUEST
 
  Conventional choices
 
@@ -56,36 +57,34 @@ EOF
 # NetBSD 8 (FFS 256MB / two NICs)
 # Ubuntu Xenial (two NICs)
 
-	print " What type of guest would you like to deploy? \c"
+	print What type of guest would you like to deploy? \\c
 	read -r tmp
 	tmp=`echo "$tmp" | sed 's/[^[:digit:]]//g'`
 	[[ -z $tmp ]] && askdistro
 }
 
-askdistro
-case $tmp in
-        1) distro=focal ;;
-        2) distro=buster ;;
-        3) distro=centos ;;
-	4) distro=slack ;;
-	5) distro=netbsd ;;
-        6) distro=crux ;;
-	7) distro=sabotage ;;
-	8) distro=freebsdzfs ;;
-        *) askdistro ;;
-esac
-unset tmp
+function createguest {
+	askdistro
+	case $tmp in
+		1) distro=focal ;;
+		2) distro=buster ;;
+		3) distro=centos ;;
+		4) distro=slack ;;
+		5) distro=netbsd ;;
+		6) distro=crux ;;
+		7) distro=sabotage ;;
+		8) distro=freebsdzfs ;;
+		*) askdistro ;;
+	esac
+	unset tmp
 
-print " What hostname? \c"
-read -r guestname
-guestname=`echo "$guestname" | sed -r 's/[^[:alnum:]-]//g'`
-[[ -z $guestname ]] && bomb \$guestname is empty
+	print What hostname? \\c
+	read -r guestname
+	guestname=`echo "$guestname" | sed -r 's/[^[:alnum:]-]//g'`
+	[[ -z $guestname ]] && bomb \$guestname is empty
+	(( `echo -n $guestname | wc -c` > 26 )) && bomb guest name cannot be more than 25 characters
 
-#we are not limiting this according to the nic device naming, but anyhow it's good not to have too long guest names
-#besides, that part of the true guest name can be redundant as many customers may choose the same, no problem with that
-(( `echo -n $guestname | wc -c` > 14 )) && bomb guest name cannot be more than 13 characters
-
-cat <<EOF | tee -a $HOME/nobudget-shell.log
+	cat <<EOF | tee -a $HOME/nobudget-shell.log
 
    system: $distro
  hostname: $guestname
@@ -93,11 +92,68 @@ cat <<EOF | tee -a $HOME/nobudget-shell.log
 
 EOF
 
-time ssh $node /root/xen/deploytpl $distro $guestname $userid | tee -a $HOME/nobudget-shell.log
+	time ssh $node /root/xen/deploytpl $distro $guestname $userid | tee -a $HOME/nobudget-shell.log
+	presscontinue
+}
 
-echo
-echo " Press any key to exit" 
-echo
+function manageguests {
+	header
+	print
+	print COMING SOON
+	print
+	presscontinue
+}
 
-read
+function support {
+	header
+	cat <<EOF
+
+ This is DNC v0.00 alpha (`date +%Y-%m-%d`)
+
+	Email: pbraun@nethence.com
+	Telegram: @pbraun
+	IRC: /msg elge on Freenode
+
+ DNC has a minimalistic code-base and is supposed to be bug-free.  Please let us know if you experience any issuei and help us eradicate bugs and misusages.  Feature requests and improvement proposals are welcome.
+
+EOF
+	presscontinue
+}
+
+function mainmenu {
+	while true; do
+		header
+		cat << EOF
+
+ 1. CREATE GUEST
+ 2. MANAGE GUESTS
+ 3. SUPPORT
+ 4. QUIT
+
+EOF
+		print Choose an operation: \\c
+		read -r tmp
+		tmp=`echo "$tmp" | sed 's/[^[:digit:]]//g'`
+		[[ -z $tmp ]] && mainmenu
+		case $tmp in
+			1) createguest ;;
+			2) manageguests ;;
+			3) support ;;
+			4) exit ;;
+			*) continue ;;
+		esac
+		unset tmp
+	done
+}
+
+#node=pro5s2
+[[ ! -f $HOME/nobudget-shell.conf ]] && echo missing $HOME/nobudget-shell.conf && exit 1
+. $HOME/nobudget-shell.conf
+
+[[ -z $node ]] && echo define node in $HOME/nobduget-shell.conf && exit 1
+
+[[ -z $1 ]] && echo $0 needs to be started with user ID as argument && exit 1
+userid=$1
+
+mainmenu
 

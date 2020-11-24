@@ -39,6 +39,7 @@ function askemail {
 		print 
 		print Press any key to retry
 		print
+        	unset tmp tmp2 email
 		read -r
 		askemail
 	fi
@@ -50,7 +51,7 @@ function askpubkey {
 	print Please enter your SSH public key \(one line\):
 	read -r tmp
 	tmp2=`echo "$tmp" | sed -r 's/[^[:alnum:] _./@-]//g'`
-        pubkey=`echo "$tmp2" | grep -E '^[[:alnum:] _./@-]+'`
+        pubkey=`echo "$tmp2" | grep -E '^[[:alnum:] _./@-]+$'`
         if [[ -z "$tmp" || -z "$tmp2" || -z "$pubkey" || "$tmp" != "$tmp2" || "$pubkey" != "$tmp" ]]; then
                 debug tmp
                 debug tmp2
@@ -61,6 +62,7 @@ function askpubkey {
                 print
                 print Press any key to retry
                 print
+        	unset tmp tmp2 pubkey
                 read -r
                 askpubkey
         fi
@@ -69,12 +71,43 @@ function askpubkey {
 
 #[[ ! -x `whence $HOME/nobudget/registeruser` ]] && bomb $HOME/nobudget/registeruser executable missing
 
+function askcode {
+        print
+        print Verification code has been sent by email!
+	print
+        print Please enter the verification code: \\c
+        read -r tmp
+        tmp2=`echo "$tmp" | sed -r 's/[^[:alnum:]]//g'`
+        code=`echo "$tmp2" | grep -E '^[[:alnum:]]+$'`
+        if [[ -z "$tmp" || -z "$tmp2" || -z "$code" || "$tmp" != "$tmp2" || "$code" != "$tmp" ]]; then
+                debug tmp
+                debug tmp2
+                debug code
+
+                print
+                print You have entered invalid characters
+                print
+                print Press any key to retry
+                print
+        	unset tmp tmp2 code
+                read -r
+                askcode
+        fi
+        unset tmp tmp2
+}
+
+function verifycode {
+	$HOME/nobudget/verifycode.py $email $code && print done || bomb failed to verify code
+	#$HOME/nobudget/resendcode.py $email $code && print done || bomb failed to verify code
+}
+
 clear
 cat <<EOF
 
- Welcome to Definitely Not a Cloud
+	Welcome to Definitely Not a Cloud
+	      (Proof of Concept)
 
- REGISTRATION FORM (Proof of Concept)
+	      REGISTRATION FORM
 
  You will be asked for the following information:
 
@@ -92,5 +125,8 @@ askemail
 
 askpubkey
 
-echo $HOME/nobudget/registeruser -u $email -k $pubkey
+$HOME/nobudget/registeruser.py $email \\"$pubkey\\" && print done || bomb failed to create user
+
+askcode
+verifycode
 
