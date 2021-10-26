@@ -1,0 +1,14 @@
+#!/bin/bash
+echo
+
+drbdadm status ocfs2
+
+o2cb cluster-status
+echo
+
+o2cluster --show-running
+echo
+
+dsh -e -g xen "mount | grep /data"
+echo
+

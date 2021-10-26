@@ -1,4 +1,5 @@
 #!/bin/bash
+echo
 
 echo HARDWARE
 dsh -e -g xen "dmidecode -t system | grep 'Product Name'"
