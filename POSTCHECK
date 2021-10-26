@@ -1,48 +1,110 @@
 #!/bin/bash
 
-echo HOSTNAME
-dsh -e -g xen uname -n
+echo HARDWARE
+dsh -e -g xen "dmidecode -t system | grep 'Product Name'"
+echo
+
+echo XEN VERSIONS
+echo
+dsh -e -g xen "xl dmesg | head | grep 'Xen version' | sed 's/(gcc .*$//'"
+echo
+
+echo BOOTING & SERIAL SETUP
+echo
+echo DOM0 KERNEL ARGS
+dsh -e -g xen "grep xen.gz /boot/syslinux/syslinux.cfg; grep -E '^s[[:digit:]]' /etc/inittab"
+echo
+
+echo DOM0 WEIGHT \& BALLOON
+#dsh -e -g xen "grep sched-credit /etc/rc.d/rc.local"
+dsh -e -g xen "xl sched-credit | grep Domain-0"
+echo
+dsh -e -g xen "grep -vE '^[[:space:]]*(#|$)' /etc/xen/xl.conf"
 echo
 
 echo KERNEL
-dsh -e -g xen uname -r
-dsh -e -g xen ls -lF /lib/modules/
+echo
+dsh -e -g xen "file /vmlinuz | cut -f9 -d' '; uname -r; ls -F /lib/modules/"
 echo
 
-echo TIMEZONE
-dsh -e -g xen date
-dsh -e -g xen ls -lF /etc/localtime
-dsh -e -g xen pgrep -a ntpd
+echo MEMORY \(MB\)
+echo
+dsh -e -g xen "free -m | grep ^Mem"
 echo
 
-echo ENVIRONMENT
-dsh -e -g xen grep ^PATH /etc/profile
-dsh -e -g xen grep color=auto /etc/profile
-dsh -e -g xen '[[ -f /etc/shrc ]] && echo /etc/shrc should not be there'
+echo FILE-SYSTEMS
+echo
+#dsh -e -g xen "file -sL /dev/sda1"
+dsh -e -g xen "mount | grep -E '^/dev|type nfs[^d]'"
 echo
 
 echo NETWORK
-dsh -e -g xen netstat -rn --inet
-dsh -e -g xen 'grep -v ^# /etc/resolv.conf'
+echo
+dsh -e -g xen uname -n
+echo
+dsh -e -g xen "netstat -r --inet | sed '1,2d'"
+echo
+dsh -e -g xen "grep -v ^# /etc/resolv.conf"
+echo
+
+echo PUBLIC NETWORK
+echo
+dsh -e -g xen "ping -c1 -W2 208.67.220.220 >/dev/null && echo OK || echo NOK"
+echo
+
+echo PUBLIC NAME RESOLUTION
+echo
+dsh -e -g xen "ping -c1 -W1 opendns.com >/dev/null && echo OK || echo NOK"
 echo
 
 echo SYSTEM
+echo
 dsh -e -g xen "grep -vE '^#|^$|^echo' /etc/rc.d/rc.local_shutdown"
-dsh -e -g xen 'grep -v ^# /etc/slackpkg/mirrors'
-dsh -e -g xen grep ^REPOPLUS /etc/slackpkg/slackpkgplus*.conf
 echo
-dsh -e -g xen grep ^MIRRORPLUS /etc/slackpkg/slackpkgplus*.conf
-echo
-dsh -e -g xen "ls -1F \
-	/var/log/packages/sbopkg-* \
-	/var/log/packages/yajl-* \
-	/var/log/packages/gcc-5* \
-	/var/log/packages/glibc-2* \
-	/var/log/packages/glibc-solibs-* \
-	/var/log/packages/compat32-tools-* \
-	; echo"
+dsh -e -g xen "grep -v ^# /etc/slackpkg/mirrors"
 echo
 
-dsh -e -g xen grep local /etc/ld.so.conf
-dsh -e -g xen file /usr/local/lib/libxlutil.so
+echo TIMEZONE
+echo
+dsh -e -g xen date
+echo
+dsh -e -g xen ls -lF /etc/localtime
+echo
+dsh -e -g xen pgrep -a ntpd
+echo
+
+echo SHELL
+echo
+dsh -e -g xen grep ^root /etc/passwd
+echo
+
+echo SSHD
+echo
+dsh -e -g xen grep ^HostKey /etc/ssh/sshd_config
+echo
+
+#echo PACKAGES
+#dsh -e -g xen "ls -1 /var/log/packages/ | grep tigervnc"
+#echo ''
+
+echo ENVIRONMENT
+echo
+dsh -e -g xen "grep PATH= /etc/profile /etc/bashrc"
+echo
+dsh -e -g xen "grep color=auto /etc/profile /etc/bashrc"
+echo
+#dsh -e -g xen '[[ -f /etc/shrc ]] && echo /etc/shrc should not be there'
+
+#dsh -e -g xen grep ^REPOPLUS /etc/slackpkg/slackpkgplus*.conf
+#dsh -e -g xen grep ^MIRRORPLUS /etc/slackpkg/slackpkgplus*.conf
+#dsh -e -g xen "ls -1F \
+#	/var/log/packages/sbopkg-* \
+#	/var/log/packages/yajl-* \
+#	/var/log/packages/gcc-5* \
+#	/var/log/packages/glibc-2* \
+#	/var/log/packages/glibc-solibs-* \
+#	/var/log/packages/compat32-tools-* \
+#	; echo"
+
+#dsh -e -g xen grep local /etc/ld.so.conf
 
