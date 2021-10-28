@@ -2,19 +2,21 @@
 set -e
 echo
 
+[[ ! -d /etc/drbd.d/ ]] && echo /etc/drbd.d/ not found && exit 1
+
 # /data/ is a shared among the nodes
-for d in /data/drbd.d /data/guests /data/kernels /data/templates; do
+for d in /data/guests /data/kernels /data/templates; do
 	[[ ! -d $d/ ]] && echo create a shared-disk $d/ folder first && exit 1
 done; unset d
 
-[[ -z $3 ]] && echo -e usage: $0 NODE-ONE NODE-TWO DRBD-MINOR\\n && exit 1
+[[ -z $3 ]] && echo -e usage: ${0##*/} NODE-ONE NODE-TWO DRBD-MINOR\\n && exit 1
 one=$1
 two=$2
 minor=$3
 
 others=`sed -rn '/^GROUP:xen/,/^$/p' /root/clusterit.conf | sed '1d;$d' | grep -vE "^$one|^$two"`
 
-#lastminor=`grep -E '^[[:space:]]*device minor' /data/drbd.d/*.res | awk '{print $4}' | cut -f1 -d';' | sort -n | tail -1`
+#lastminor=`grep -E '^[[:space:]]*device minor' /etc/drbd.d/*.res | awk '{print $4}' | cut -f1 -d';' | sort -n | tail -1`
 #echo lastminor is $lastminor
 #echo
 
@@ -30,7 +32,7 @@ guest=dnc${minor}
 # lvm preliminaries...
 
 # drbd preliminaries...
-res=/data/drbd.d/$guest.res
+res=/etc/drbd.d/$guest.res
 [[ -f $res ]] && echo $res already exists && exit 1
 
 echo THIN VOLUME CREATION
@@ -89,6 +91,11 @@ cat >> $res <<EOF && echo done
                 }
         }
 EOF
+echo
+
+echo SYNC RESOURCE CONFIG
+rsync -avz --delete /etc/drbd.d/ slack2:/etc/drbd.d/
+rsync -avz --delete /etc/drbd.d/ slack3:/etc/drbd.d/
 echo
 
 echo CREATE-MD ON NODE $one

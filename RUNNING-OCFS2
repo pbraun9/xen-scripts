@@ -12,3 +12,6 @@ echo
 dsh -e -g xen "mount | grep /data"
 echo
 
+dsh -e -g xen lvs
+echo
+

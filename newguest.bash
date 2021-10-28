@@ -2,12 +2,14 @@
 set -e
 echo
 
+[[ ! -d /etc/drbd.d/ ]] && echo /etc/drbd.d/ not found && exit 1
+
 # /data/ is a shared among the nodes
-for d in /data/drbd.d /data/guests /data/kernels /data/templates; do
+for d in /data/guests /data/kernels /data/templates; do
 	[[ ! -d $d/ ]] && echo create a shared-disk $d/ folder first && exit 1
 done; unset d
 
-[[ -z $2 ]] && echo -e usage: $0 GUEST-RESOURCE GUEST-HOSTNAME \\n && exit 1
+[[ -z $2 ]] && echo -e usage: ${0##*/} GUEST-RESOURCE GUEST-HOSTNAME \\n && exit 1
 guest=$1
 name=$2
 short=${name%%\.*}
@@ -16,6 +18,7 @@ echo XEN/PV GUEST CREATION
 #echo XEN/PVH GUEST CREATION
 echo
 
+# xenbr0 -- perimeter snat
 echo -n writing guest config...
 mkdir -p /data/guests/$guest/lala/
 cat > /data/guests/$guest/$guest <<EOF && echo done
@@ -27,7 +30,7 @@ name = "$guest"
 memory = 1024
 vcpus = 16
 disk = ['phy:/dev/drbd/by-res/$guest/0,xvda1,w']
-vif = [ 'bridge=br0, vifname=$guest' ]
+vif = [ 'bridge=xenbr0, vifname=$guest' ]
 #type = "pvh"
 EOF
 
@@ -45,6 +48,7 @@ time nice tar xpf /data/templates/slack.tar --numeric-owner -C lala/ && echo don
 echo
 
 echo SYSPREP FOR HOSTNAME $name
+echo
 
 echo -n hostname $name ...
 echo $short > lala/etc/HOSTNAME && echo done
@@ -109,9 +113,9 @@ for dns in dns1 dns2 dns3; do
 	[[ -n ${!dns} ]] && echo -e "nameserver ${!dns}" >> lala/etc/resolv.conf
 done; unset dns
 
-echo -n ADDING CUSTOMER PUBKEYS...
+echo -n adding pubkeys...
 mkdir lala/root/.ssh/
-cat $HOME/.ssh/id_*.pub > lala/root/.ssh/authorized_keys <<EOF && echo done
+cat $HOME/.ssh/id_*.pub > lala/root/.ssh/authorized_keys && echo done
 #cat > lala/root/.ssh/authorized_keys <<EOF && echo done
 #PUBKEY-HERE
 #EOF
