@@ -113,9 +113,10 @@ echo -n CLEAR-BITMAP ON $one ...
 ssh $one drbdadm new-current-uuid --clear-bitmap $guest && echo DONE
 echo
 
-echo SLEEPING 1 SECOND AND STATUS
-sleep 1
 # resource is reachable locally even though it can be diskless
+echo SLEEPING 1 SECOND AND STATUS
+echo
+sleep 1
 drbdadm status $guest
 echo
 

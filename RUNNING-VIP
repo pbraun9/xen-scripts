@@ -1,0 +1,9 @@
+#!/bin/bash
+echo
+
+dsh -e -g xen "ip addr list xenbr0 | grep 'inet '"
+echo
+
+dsh -e -g xen "ip addr list xenbr0 | grep inet6"
+echo
+
