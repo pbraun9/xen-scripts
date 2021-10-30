@@ -1,0 +1,18 @@
+#!/bin/bash
+echo
+
+dsh -e -g xen "pgrep -a keepalived"
+echo
+
+dsh -e -g xen "ip addr show xenbr0 | grep \\.209"
+echo
+
+dsh -e -g xen "pgrep -a thttpd"
+echo
+
+dsh -e -g xen "xl list --numa | sed '1,2d'"
+echo
+
+#dsh -e -g xen "/etc/rc.d/init.d/heartbeat status"
+#echo
+

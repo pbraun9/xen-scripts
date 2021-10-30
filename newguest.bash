@@ -133,6 +133,8 @@ echo -n un-mounting lala/ ...
 umount lala/ && echo done
 rmdir lala/
 
+echo up > /data/guests/$guest/state
+
 # resource should be fully up and running before trying to start the guest on it
 #Error: Can't open /dev/drbd/by-res/dnc16/0. Read-only file system.
 echo starting guest $guest

@@ -1,0 +1,22 @@
+#!/bin/bash
+
+for guestpath in `find /data/guests/dnc* -type d -maxdepth 1`; do
+	guest=${guestpath##*/}
+
+	drbdadm role $guest >/dev/null || echo BAD DRBD RESOURCE $guest
+
+	[[ ! -f $guestpath/$guest ]] && echo MISSING XEN GUEST CONFIG FILE $guest
+	[[ ! -s $guestpath/$guest ]] && echo EMPTY XEN GUEST CONFIG FILE $guest
+	[[ ! -f $guestpath/state ]] && echo MISSNG STATE FILE $guest
+
+	state=`cat $guestpath/state`
+	if [[ $state = up ]]; then
+		xl list $guest >/dev/null 2>&1 || echo GUEST $guest IS SUPPOSED TO BE UP
+	elif [[ $state = down ]]; then
+		xl list $guest >/dev/null 2>&1 && echo GUEST $guest IS SUPPOSED TO BE DOWN
+	else
+		echo WRONG STATE FOR GUEST $guest
+	fi
+	unset state
+done; unset guest
+
