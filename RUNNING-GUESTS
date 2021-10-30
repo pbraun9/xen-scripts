@@ -1,6 +1,2 @@
 #!/bin/bash
-echo
-
 dsh -e -g xen "xl list --numa | sed '1,2d'"
-echo
-
