@@ -1,18 +1,24 @@
 #!/bin/bash
 echo
 
+# VRRP
 dsh -e -g xen "pgrep -a keepalived"
 echo
 
-dsh -e -g xen "ip addr show xenbr0 | grep \\.209"
+# GW
+dsh -e -g xen "ip addr show xenbr0 | grep \\.254"
+dsh -e -g xen "nft list ruleset | grep '10.0.0.254'"
 echo
 
+# LINUX-HA
+dsh -e -g xen "pgrep -a heartbeat"
+echo
+
+# SERVICES
 dsh -e -g xen "pgrep -a thttpd"
 echo
 
+# GUESTS
 dsh -e -g xen "xl list --numa | sed '1,2d'"
 echo
-
-#dsh -e -g xen "/etc/rc.d/init.d/heartbeat status"
-#echo
 
