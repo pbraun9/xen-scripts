@@ -14,8 +14,8 @@ guest=$1
 name=$2
 short=${name%%\.*}
 
-echo XEN/PV GUEST CREATION
-#echo XEN/PVH GUEST CREATION
+echo SLACKWARE XEN/PV GUEST CREATION
+# XEN/PVH
 echo
 
 # xenbr0 -- perimeter snat
@@ -34,7 +34,7 @@ vif = [ 'bridge=xenbr0, vifname=$guest' ]
 #type = "pvh"
 EOF
 
-# even from here (possibly diskless)
+# possibly diskless
 echo -n making REISER4 file-system...
 mkfs.reiser4 -y /dev/drbd/by-res/$guest/0 && echo done
 
@@ -42,6 +42,7 @@ cd /data/guests/$guest/
 echo -n mounting into lala/ ...
 mount /dev/drbd/by-res/$guest/0 lala/ && echo done
 
+# TODO show progress while extracting
 echo extracting slackware template
 [[ -z `mount -t reiser4 | grep /data/guests/$guest/lala` ]] && echo $guest file-system is not mounted && exit 1
 time nice tar xpf /data/templates/slack.tar --numeric-owner -C lala/ && echo done
@@ -57,6 +58,7 @@ ip=10.0.0.99/24
 gw=10.0.0.254
 dns1=192.168.122.1
 
+mv lala/etc/hosts lala/etc/hosts.dist
 echo -e "127.0.0.1\t\tlocalhost.localdomain localhost" > lala/etc/hosts
 echo -e "::1\t\t\tlocalhost.localdomain localhost" >> lala/etc/hosts
 echo -e "${ip%/*}\t$short.localdomain $short" >> lala/etc/hosts
@@ -64,22 +66,6 @@ echo -e "${ip%/*}\t$short.localdomain $short" >> lala/etc/hosts
 for dns in dns1 dns2 dns3; do
 	[[ -n ${!dns} ]] && echo -e "${!dns}\t\t$dns" >> lala/etc/hosts
 done; unset dns
-
-# WARNING ESCAPES ARE IN THERE
-echo -n rc.sshd...
-cat > lala/etc/rc.d/rc.sshd <<EOF && echo done
-#!/bin/bash
-
-echo rc.sshd PATH is \$PATH
-
-if [[ \$1 = stop ]]; then
-	pkill sshd
-else
-	[[ ! -f /etc/ssh/ssh_host_ed25519_key ]] && ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ''
-	/usr/sbin/sshd
-fi
-EOF
-chmod +x lala/etc/rc.d/rc.sshd
 
 # WARNING ESCAPES ARE IN THERE
 echo -n rc.inet1...
@@ -103,6 +89,7 @@ else
 	echo -n default route ...
 	route add default gw $gw && echo done
 
+	# self-verbose
 	/etc/rc.d/rc.sshd start
 fi
 EOF
@@ -112,6 +99,15 @@ echo 'search nethence.com' > lala/etc/resolv.conf
 for dns in dns1 dns2 dns3; do
 	[[ -n ${!dns} ]] && echo -e "nameserver ${!dns}" >> lala/etc/resolv.conf
 done; unset dns
+
+# template should NOT have host keys within, erasing anyways
+rm -f lala/etc/ssh/ssh_host_*
+
+# we have better entropy on bare-metal
+#ssh-keygen -q -t dsa -f lala/etc/ssh/ssh_host_dsa_key -C root@$name -N ''
+#ssh-keygen -q -t rsa -f lala/etc/ssh/ssh_host_rsa_key -C root@$name -N ''
+#ssh-keygen -q -t ecdsa -f lala/etc/ssh/ssh_host_ecdsa_key -C root@$name -N ''
+ssh-keygen -q -t ed25519 -f lala/etc/ssh/ssh_host_ed25519_key -C root@$name -N ''
 
 echo -n adding pubkeys...
 mkdir lala/root/.ssh/
@@ -126,19 +122,15 @@ chmod 600 lala/root/.ssh/authorized_keys
 #chroot lala/ ldconfig && echo done
 #echo
 
-# template should NOT have host keys within, erasing anyways
-rm -f lala/etc/ssh/ssh_host_*
-
 echo -n un-mounting lala/ ...
 umount lala/ && echo done
 rmdir lala/
-
-echo up > /data/guests/$guest/state
 
 # resource should be fully up and running before trying to start the guest on it
 #Error: Can't open /dev/drbd/by-res/dnc16/0. Read-only file system.
 echo starting guest $guest
 xl create /data/guests/$guest/$guest && echo -e \\nGUEST $guest HAS BEEN STARTED
+echo up > /data/guests/$guest/state
 
 echo
 
