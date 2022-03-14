@@ -1,6 +1,5 @@
 #!/bin/bash
 set -e
-echo
 
 [[ ! -d /etc/drbd.d/ ]] && echo /etc/drbd.d/ not found && exit 1
 
@@ -14,7 +13,12 @@ one=$1
 two=$2
 minor=$3
 
-others=`sed -rn '/^GROUP:xen/,/^$/p' /root/clusterit.conf | sed '1d;$d' | grep -vE "^$one|^$two"`
+others=`sed -rn '/^GROUP:xen/,/^$/p' /root/dsh.conf | sed '1d;$d' | grep -vE "^$one|^$two"`
+peers=`sed -rn '/^GROUP:xen/,/^$/p' /root/dsh.conf | sed '1d;$d' | grep -vE "^$HOSTNAME"`
+
+echo CREATING RESOURCE FOR NODES $one $two $others
+echo node is $HOSTNAME and peers are $peers
+echo
 
 #lastminor=`grep -E '^[[:space:]]*device minor' /etc/drbd.d/*.res | awk '{print $4}' | cut -f1 -d';' | sort -n | tail -1`
 #echo lastminor is $lastminor
@@ -35,9 +39,10 @@ guest=dnc${minor}
 res=/etc/drbd.d/$guest.res
 [[ -f $res ]] && echo $res already exists && exit 1
 
-echo THIN VOLUME CREATION
-echo
 
+#
+# THIN VOLUME CREATION
+#
 echo creating thin volume $guest on $one
 ssh $one lvcreate --virtualsize 10G --thin -n $guest thin/pool
 echo
@@ -46,16 +51,17 @@ echo creating thin volume $guest one $two
 ssh $two lvcreate --virtualsize 10G --thin -n $guest thin/pool
 echo
 
-echo DRBD RESOURCE SETUP
-echo
 
+#
+# DRBD RESOURCE SETUP
+#
 # TODO improve ${other#slack} and use the initial RANDOM from above
-nodeidone=${one#slack}
-nodeidtwo=${two#slack}
+nodeidone=${one##*[a-z]}
+nodeidtwo=${two##*[a-z]}
 
-#with device id $minor and port $port on nodes $one and $two...
-echo -n creating $res with mirrors on $one $two ...
-cat > $res <<EOF && echo done
+# device id $minor and port $port on nodes $one and $two
+echo -n creating $res with mirrors on $one $two...
+cat > $res <<EOF
         resource $guest {
                 device minor $minor;
                 meta-disk internal;
@@ -72,10 +78,9 @@ cat > $res <<EOF && echo done
 EOF
 unset nodeidone nodeidtwo
 
-echo -n adding $others to the resources ...
 for other in $others; do
-	nodeid=${other#slack}
-	cat >> $res <<EOF && echo done
+	nodeid=${other##*[a-z]}
+	cat >> $res <<EOF
                 on $other {
                         node-id   $nodeid;
                         address   192.168.122.1$nodeid:$minor;
@@ -84,18 +89,20 @@ for other in $others; do
 EOF
 done; unset other nodeid
 
-echo -n closing $res ...
 cat >> $res <<EOF && echo done
                 connection-mesh {
-                        hosts slack1 slack2 slack3;
+                        hosts $one $two $others;
                 }
         }
 EOF
-echo
 
-echo SYNC RESOURCE CONFIG
-rsync -avz --delete /etc/drbd.d/ slack2:/etc/drbd.d/
-rsync -avz --delete /etc/drbd.d/ slack3:/etc/drbd.d/
+#
+# SYNC RESOURCE CONFIG
+#
+for peer in $peers; do
+	echo -n sync resource conf on $peer...
+	rsync -az --delete /etc/drbd.d/ $peer:/etc/drbd.d/ && echo done
+done; unset peer
 echo
 
 echo CREATE-MD ON NODE $one
