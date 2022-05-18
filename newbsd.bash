@@ -1,9 +1,12 @@
 #!/bin/bash
 set -e
-echo
 
 [[ ! -d /etc/drbd.d/ ]] && echo /etc/drbd.d/ not found && exit 1
 [[ ! -f /data/templates/netbsd.ffs ]] && echo could not find /data/templates/netbsd.ffs && exit 1
+
+[[ ! -f /etc/dnc.conf ]] && could not find /etc/dnc.conf && exit 1
+source /etc/dnc.conf
+[[ ! -n $pubkeys ]] && echo \$pubkeys not defined && exit 1
 
 # /data/ is a shared among the nodes
 for d in /data/guests /data/kernels /data/templates; do
@@ -51,10 +54,8 @@ echo
 echo -n hostname $name ...
 echo $short > lala/etc/myname && echo done
 
-ip=10.0.0.99/24
-gw=10.0.0.254
-dns1=192.168.122.1
-
+# we're lucky the dnc.conf evaluation works on $ip even though it was loaded before $minor got defined
+echo tuning /etc/hosts
 mv lala/etc/hosts lala/etc/hosts.dist
 echo -e "::1\t\t\tlocalhost localhost." >> lala/etc/hosts
 echo -e "127.0.0.1\t\tlocalhost localhost." > lala/etc/hosts
@@ -64,17 +65,15 @@ for dns in dns1 dns2 dns3; do
 	[[ -n ${!dns} ]] && echo -e "${!dns}\t\t$dns" >> lala/etc/hosts
 done; unset dns
 
-echo 'search nethence.com' > lala/etc/resolv.conf
 for dns in dns1 dns2 dns3; do
 	[[ -n ${!dns} ]] && echo -e "nameserver ${!dns}" >> lala/etc/resolv.conf
 done; unset dns
 
 echo -n adding pubkeys...
-mkdir lala/root/.ssh/
-cat $HOME/.ssh/id_*.pub > lala/root/.ssh/authorized_keys && echo done
-#cat > lala/root/.ssh/authorized_keys <<EOF && echo done
-#PUBKEY-HERE
-#EOF
+mkdir -p lala/root/.ssh/
+cat > lala/root/.ssh/authorized_keys <<EOF && echo done
+$pubkeys
+EOF
 chmod 700 lala/root/.ssh/
 chmod 600 lala/root/.ssh/authorized_keys
 
@@ -99,6 +98,5 @@ rmdir lala/
 echo starting guest $guest
 xl create /data/guests/$guest/$guest && echo -e \\nGUEST $guest HAS BEEN STARTED
 echo up > /data/guests/$guest/state
-
 echo
 
