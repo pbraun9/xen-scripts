@@ -5,6 +5,7 @@
 
 [[ ! -f /etc/dnc.conf ]] && echo /etc/dnc.conf not found && exit 1
 . /etc/dnc.conf
+[[ ! -n $hostprefix ]] && echo \$hostprefix not defined && exit 1
 
 [[ -z $1 ]] && echo resource minor? && exit 1
 minor=$1
@@ -14,9 +15,9 @@ peers=`sed -rn '/^GROUP:xen/,/^$/p' /root/dsh.conf | sed '1d;$d' | grep -vE "^$H
 
 # we need /etc/drbd.d/dnc1.res to know about the volumes
 # TODO also create a script to find about existing volumes
-[[ ! -f /etc/drbd.d/dnc1.res ]] && echo /etc/drbd.d/dnc1.res not found && exit 1
+[[ ! -f /etc/drbd.d/$res.res ]] && echo /etc/drbd.d/$res.res not found && exit 1
 
-volpeerids=`sed -rn "/device minor $minor/,/connection-mesh/p" /etc/drbd.d/dnc1.res | grep -B2 '/dev/thin/dnc' | grep node-id | sed -r 's/[[:space:]]*node-id[[:space:]]*([[:digit:]]+);/\1/'`
+volpeerids=`sed -rn "/device minor $minor/,/connection-mesh/p" /etc/drbd.d/$res.res | grep -B2 '/dev/thin/dnc' | grep node-id | sed -r 's/[[:space:]]*node-id[[:space:]]*([[:digit:]]+);/\1/'`
 volpeers=`for volpeerid in $volpeerids; do echo ${hostprefix}${volpeerid}; done; unset volpeerid`
 
 echo REMOVING RESOURCE FROM NODES 

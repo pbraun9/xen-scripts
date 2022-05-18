@@ -3,6 +3,11 @@ set -e
 
 [[ ! -d /etc/drbd.d/ ]] && echo /etc/drbd.d/ not found && exit 1
 
+[[ ! -f /etc/dnc.conf ]] && cannot find /etc/dnc.conf && exit 1
+source /etc/dnc.conf
+[[ ! -n $network ]] && echo \$network not defined && exit 1
+netprefix=`echo $network | sed -r 's/^([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)\..*/\1/'`
+
 # /data/ is a shared among the nodes
 for d in /data/guests /data/kernels /data/templates; do
 	[[ ! -d $d/ ]] && echo create a shared-disk $d/ folder first && exit 1
@@ -67,12 +72,12 @@ cat > $res <<EOF
                 meta-disk internal;
                 on $one {
                         node-id   $nodeidone;
-                        address   192.168.122.1$nodeidone:$minor;
+                        address   $netprefix.$nodeidone:$minor;
                         disk      /dev/thin/$guest;
                 }
                 on $two {
                         node-id   $nodeidtwo;
-                        address   192.168.122.1$nodeidtwo:$minor;
+                        address   $netprefix.$nodeidtwo:$minor;
                         disk      /dev/thin/$guest;
                 }
 EOF
@@ -83,7 +88,7 @@ for other in $others; do
 	cat >> $res <<EOF
                 on $other {
                         node-id   $nodeid;
-                        address   192.168.122.1$nodeid:$minor;
+                        address   $netprefix.$nodeid:$minor;
                         disk      none;
                 }
 EOF
