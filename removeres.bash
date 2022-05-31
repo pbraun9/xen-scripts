@@ -7,7 +7,7 @@
 . /etc/dnc.conf
 [[ ! -n $hostprefix ]] && echo \$hostprefix not defined && exit 1
 
-[[ -z $1 ]] && echo resource minor? && exit 1
+[[ -z $1 ]] && echo usage: "${0##*/} <minor>" && exit 1
 minor=$1
 res=dnc$minor
 

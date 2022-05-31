@@ -6,7 +6,7 @@ set -e
 #removing the possible trailing slash
 guest=${1%/}
 tpl=/data/templates
-archive=$tpl/$guest.`date +%s`.tar
+archive=$tpl/$guest-`date +%s`.tar
 
 [[ ! -d $guest/ ]] && echo $guest/ not found && exit 1
 

@@ -1,8 +1,21 @@
 #!/bin/bash
 set -e
 
+# assumes template is ready (bsd/malabar-ffs)
+
+[[ -z $1 ]] && echo usage: ${0##*/} GUEST-NAME && exit 1
+guest=$1
+
+source /root/xen/netbsd.conf
+[[ -z $repo ]] && echo define \$repo && exit 1
+[[ -z $name ]] && echo define \$name && exit 1
+[[ -z $tpl ]] && echo define \$tpl && exit 1
+
+short=${name%%\.*}
+
+[[ ! -f $tpl ]] && echo could not find $tpl && exit 1
+
 [[ ! -d /etc/drbd.d/ ]] && echo /etc/drbd.d/ not found && exit 1
-[[ ! -f /data/templates/netbsd.ffs ]] && echo could not find /data/templates/netbsd.ffs && exit 1
 
 [[ ! -f /etc/dnc.conf ]] && could not find /etc/dnc.conf && exit 1
 source /etc/dnc.conf
@@ -13,12 +26,8 @@ for d in /data/guests /data/kernels /data/templates; do
 	[[ ! -d $d/ ]] && echo create a shared-disk $d/ folder first && exit 1
 done; unset d
 
-[[ -z $2 ]] && echo -e usage: ${0##*/} GUEST-RESOURCE GUEST-HOSTNAME \\n && exit 1
-guest=$1
-name=$2
-short=${name%%\.*}
-
-echo NETBSD XEN/PVH GUEST CREATION
+echo
+echo NETBSD XEN GUEST CREATION
 echo
 
 # xenbr0 -- perimeter snat
@@ -26,21 +35,21 @@ echo
 echo -n writing guest config...
 mkdir -p /data/guests/$guest/lala/
 cat > /data/guests/$guest/$guest <<EOF && echo done
-kernel = "/data/kernels/netbsd-current/netbsd-GENERIC.gz"
+kernel = "$repo/netbsd-XEN3_DOMU.gz"
 root = "xbd0a"
 #extra = "-v -s"
 name = "$guest"
 memory = 512
 vcpus = 3
 disk = ['phy:/dev/drbd/by-res/$guest/0,xvda,w']
-vif = [ 'bridge=xenbr0,vifname=$guest.0',
-        'bridge=br0,vifname=$guest.1']
-type = "pvh"
+vif = [ 'bridge=guestbr0,vifname=$guest.0',
+        'bridge=guestbr0,vifname=$guest.1']
+#type = "pvh"
 EOF
 
 # possibly diskless
 echo writing makefs-based image to resource $guest
-time nice dd if=/data/templates/netbsd.ffs of=/dev/drbd/by-res/$guest/0 bs=1M status=progress
+nice dd if=$tpl of=/dev/drbd/by-res/$guest/0 bs=1M status=progress
 
 cd /data/guests/$guest/
 echo -n mounting into lala/ ...

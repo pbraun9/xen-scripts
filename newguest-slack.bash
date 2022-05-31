@@ -1,30 +1,19 @@
 #!/bin/bash
 set -e
 
-[[ ! -d /etc/drbd.d/ ]] && echo /etc/drbd.d/ not found && exit 1
-
-# /data/ is a shared among the nodes
-for d in /data/guests /data/kernels /data/templates; do
-	[[ ! -d $d/ ]] && echo create a shared-disk $d/ folder first && exit 1
-done; unset d
-
-#[[ -z $2 ]] && echo usage: ${0##*/} GUEST-RESOURCE GUEST-HOSTNAME && exit 1
-#guest=$1
-#name=$2
-#short=${name%%\.*}
-
-[[ -z $1 ]] && echo usage: ${0##*/} MINOR && exit 1
+[[ -z $1 ]] && echo usage: ${0##*/} DRBD-MINOR && exit 1
 minor=$1
 guest=dnc$minor
 name=dnc$minor
 short=dnc$minor
 
+source /root/xen/newguest-include.bash
+
 [[ ! -f /etc/dnc.conf ]] && could not find /etc/dnc.conf && exit 1
 source /etc/dnc.conf
 [[ ! -n $pubkeys ]] && echo \$pubkeys not defined && exit 1
 
-echo SLACKWARE XEN/PV GUEST CREATION
-# XEN/PVH
+echo SLACKWARE XEN GUEST CREATION
 echo
 
 # possibly diskless
