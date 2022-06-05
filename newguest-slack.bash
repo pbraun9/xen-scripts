@@ -1,11 +1,21 @@
-#!/bin/bash
+#!/bin/ksh
 set -e
 
-[[ -z $1 ]] && echo usage: ${0##*/} DRBD-MINOR && exit 1
+[[ -z $1 ]] && echo usage: "${0##*/} <DRBD-MINOR> [RESOURCE/GUEST]" && exit 1
 minor=$1
-guest=dnc$minor
-name=dnc$minor
-short=dnc$minor
+[[ -n $2 ]] && guest=$2 || guest=dnc$minor
+[[ -n $2 ]] && name=$2 || name=dnc$minor
+short=${name%%\.*}
+echo
+
+if [[ `drbdadm status $guest` ]]; then
+	echo DRBD RESOURCE $guest IS FINE
+	echo
+else
+	echo DRBD RESOURCE $guest HAS AN ISSUE
+	echo
+	exit 1
+fi
 
 source /root/xen/newguest-include.bash
 
@@ -16,40 +26,42 @@ source /etc/dnc.conf
 echo SLACKWARE XEN GUEST CREATION
 echo
 
-# possibly diskless
-echo -n making BTRFS file-system...
-mkfs.btrfs /dev/drbd/by-res/$guest/0 >/dev/null && echo done
-#echo -n making REISER4 file-system...
-#mkfs.reiser4 -y /dev/drbd/by-res/$guest/0 && echo done
-
+# drbd resource is possibly diskless
+tpl=slack
+partclone.btrfs --restore --source /data/templates/$tpl.pcl --output /dev/drbd/by-res/$guest/0
 mkdir -p /data/guests/$guest/lala/
+mount -o compress=lzo /dev/drbd/by-res/$guest/0 /data/guests/$guest/lala/
+btrfs filesystem resize max /data/guests/$guest/lala/
+unset tpl
+echo
+
+echo SYSTEM PREPARATION
+echo
+
+# TODO use absolute path
 cd /data/guests/$guest/
-echo -n mounting into lala/ ...
-mount /dev/drbd/by-res/$guest/0 lala/ && echo done
 
-# TODO show progress while extracting
-echo extracting slackware template
-[[ -z `mount -t btrfs | grep /data/guests/$guest/lala` ]] && echo $guest file-system is not mounted && exit 1
-#[[ -z `mount -t reiser4 | grep /data/guests/$guest/lala` ]] && echo $guest file-system is not mounted && exit 1
-time nice tar xpf /data/templates/slack.tar --numeric-owner -C lala/ && echo done
-echo
-
-echo SYSPREP FOR HOSTNAME $name
-echo
-
-echo -n hostname $name ...
+echo -n hostname $short ...
 echo $short > lala/etc/HOSTNAME && echo done
 
 # we're lucky the dnc.conf evaluation works on $ip even though it was loaded before $minor got defined
-echo tuning /etc/hosts
-mv lala/etc/hosts lala/etc/hosts.dist
-echo -e "127.0.0.1\t\tlocalhost.localdomain localhost" > lala/etc/hosts
-echo -e "::1\t\t\tlocalhost.localdomain localhost" >> lala/etc/hosts
-echo -e "${ip%/*}\t$short.localdomain $short" >> lala/etc/hosts
-[[ -n $gw ]] && echo -e "$gw\t\tgw" >> lala/etc/hosts
+echo -n tuning /etc/hosts ...
+echo 127.0.0.1 localhost.localdomain localhost > lala/etc/hosts
+echo ::1 localhost.localdomain localhost >> lala/etc/hosts
+echo ${ip%/*} $short.localdomain $short >> lala/etc/hosts
+[[ -n $gw ]] && echo $gw gw.localdomain gw >> lala/etc/hosts && echo done
+
+echo -n adding dns entries to /etc/hosts ...
+# here sourcing var names, not vars themselves
 for dns in dns1 dns2 dns3; do
-	[[ -n ${!dns} ]] && echo -e "${!dns}\t\t$dns" >> lala/etc/hosts
-done; unset dns
+	[[ -n ${!dns} ]] && echo ${!dns} $dns >> lala/etc/hosts
+done && echo done; unset dns
+
+echo -n erasing previous /etc/resolv.conf from tpl...
+rm -f lala/etc/resolv.conf
+for dns in $dns1 $dns2 $dns3; do
+	echo nameserver $dns >> lala/etc/resolv.conf
+done && echo done; unset dns
 
 # erasing previous settings from tpl
 # WARNING ESCAPES ARE IN THERE
@@ -80,13 +92,8 @@ fi
 EOF
 chmod +x lala/etc/rc.d/rc.inet1
 
-# erasing previous settings from tpl
-rm -f lala/etc/resolv.conf
-for dns in dns1 dns2 dns3; do
-	[[ -n ${!dns} ]] && echo -e "nameserver ${!dns}" >> lala/etc/resolv.conf
-done; unset dns
-
 # template should NOT have host keys within, erasing anyways
+echo clean-up ssh host keys
 rm -f lala/etc/ssh/ssh_host_*
 
 # we have better entropy on bare-metal
@@ -109,19 +116,16 @@ chmod 600 lala/root/.ssh/authorized_keys
 #chroot lala/ ldconfig && echo done
 #echo
 
-echo -n un-mounting lala/ ...
-umount lala/ && echo done
-rmdir lala/
+echo -n un-mounting...
+umount /data/guests/$guest/lala/ && echo done
+rmdir /data/guests/$guest/lala/
 
-# xenbr0 -- perimeter nat
-# guestbr0 -- guest vlan nat
 echo -n writing guest config...
 cat > /data/guests/$guest/$guest <<EOF && echo done
-kernel = "/data/kernels/vmlinuz"
+kernel = "/data/kernels/5.2.21.domureiser4.vmlinuz"
 root = "/dev/xvda1 ro console=hvc0 mitigations=off"
 #extra = "init=/bin/bash"
 name = "$guest"
-#memory = 7168
 memory = 1024
 vcpus = 2
 disk = ['phy:/dev/drbd/by-res/$guest/0,xvda1,w']

@@ -1,68 +1,102 @@
 #!/bin/bash
 set -e
 
-[[ -z $2 ]] && echo "usage: ${0##*/} <guest name> <ip suffix>" && exit 1
+[[ -z $4 ]] && echo "usage: ${0##*/} <node1> <node2> <guest name> <ip suffix>" && exit 1
 
-guest=$1
-suffix=$2
+source /etc/dnc.conf
+
+node1=$1
+node2=$2
+guest=$3
+suffix=$4
 (( port = 7000 + suffix ))
 
 # size in GB (not GiB)
 #size=25G
 size=10G
 
-cat <<EOF
-# CREATE THIN VOLUME ON TWO NODES E.G. NODES 2 AND 3
-lvcreate --virtualsize $size --thin -n $guest thin/pool
+# initial checks
+[[ -f /etc/drbd.d/$guest.res ]] && echo /etc/drbd.d/$guest.res already exists && exit 1
 
-EOF
+echo
+echo CREATE THIN VOLUME ON TWO NODES
+echo
 
-cat <<EOF
-# ADD THIS TO DRBD CONFIG AND SYNC
-vi /etc/drbd.d/$guest.res
+ssh $node1 lvcreate --virtualsize $size --thin -n $guest thin/pool
+ssh $node2 lvcreate --virtualsize $size --thin -n $guest thin/pool
+ssh $node1 lvs -o+discards thin/$guest
+ssh $node2 lvs -o+discards thin/$guest
 
+echo
+echo DRBD CONFIG AND SYNC
+echo
+
+# sanitize vars to avoid EOF in there
+echo -n writing /etc/drbd.d/$guest.res ...
+cat > /etc/drbd.d/$guest.res <<EOF
 resource $guest {
 	device minor $suffix;
 	meta-disk internal;
-	on pmr1 {
-		node-id   1;
-		address   10.3.3.1:$port;
+EOF
+
+for node in $nodes; do
+	id=`echo $node | sed -r "s/^$hostprefix//"`
+	if [[ $node = $node1 || $node = $node2 ]]; then
+		cat >> /etc/drbd.d/$guest.res <<EOF
+	on $node {
+		node-id   $id;
+		address   10.3.3.$id:$port;
+		disk      /dev/thin/$guest;
+	}
+EOF
+	else
+		cat >> /etc/drbd.d/$guest.res <<EOF
+	on $node {
+		node-id   $id;
+		address   10.3.3.$id:$port;
 		disk      none;
 	}
-	on pmr2 {
-		node-id   2;
-		address   10.3.3.2:$port;
-		disk      /dev/thin/$guest;
-	}
-	on pmr3 {
-		node-id   3;
-		address   10.3.3.3:$port;
-		disk      /dev/thin/$guest;
-	}
+EOF
+	fi
+done; unset node
+
+cat >> /etc/drbd.d/$guest.res <<EOF && echo done
 	connection-mesh {
-		hosts pmr1 pmr2 pmr3;
+		hosts $nodes;
 	}
 }
-
-rsync -av --delete /etc/drbd.d/ pmr2:/etc/drbd.d/
-rsync -av --delete /etc/drbd.d/ pmr3:/etc/drbd.d/
 EOF
 
-cat <<EOF
-# ALSO INITIALIZE THE VOLUME
+for node in $nodes; do
+	if [[ $node != `hostname` ]]; then
+		echo -n conf sync on $node ...
+		rsync -a --delete /etc/drbd.d/ $node:/etc/drbd.d/ && echo done
+	fi
+done; unset node
 
-# mirror nodes
-drbdadm create-md $guest
-drbdadm up $guest
+echo
+echo INITIALIZE THE VOLUME
+echo
 
-# diskless nodes
-drbdadm up $guest
+echo create-md on $node1
+ssh $node1 drbdadm create-md $guest
+echo
+
+echo create-md on $node2
+ssh $node2 drbdadm create-md $guest
+echo
+
+for node in $nodes; do
+	echo resource $guest up on $node
+	ssh $node drbdadm up $guest
+done; unset node
+echo
 
 # only once on one of the mirrors
-drbdadm new-current-uuid --clear-bitmap $guest
-drbdadm status $guest
-ssh pmr2 lvs -o+discards thin/$guest
-ssh pmr3 lvs -o+discards thin/$guest
+echo drbd-fast-sync
+sleep 3
+ssh $node1 drbdadm new-current-uuid --clear-bitmap $guest
+echo
 
-EOF
+drbdadm status $guest
 
