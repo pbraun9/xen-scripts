@@ -1,30 +1,32 @@
 #!/bin/bash
 set -e
 
-[[ -z $1 ]] && echo usage: "${0##*/} <DRBD-MINOR> [RESOURCE/GUEST]" && exit 1
-minor=$1
-[[ -n $2 ]] && guest=$2 || guest=dnc$minor
-[[ -n $2 ]] && name=$2 || name=dnc$minor
+[[ -z $2 ]] && echo usage: "${0##*/} <debian|ubuntu> <DRBD-MINOR> [RESOURCE/GUEST]" && exit 1
+type=$1
+minor=$2
+[[ -n $3 ]] && guest=$2 || guest=dnc$minor
+[[ -n $3 ]] && name=$2 || name=dnc$minor
 short=${name%%\.*}
 
 if [[ `drbdadm status $guest` ]]; then
-	echo DRBD RESOURCE $guest IS FINE
-	echo
+        echo DRBD RESOURCE $guest IS FINE
+        echo
 else
-	echo DRBD RESOURCE $guest HAS AN ISSUE
-	echo
-	exit 1
+        echo DRBD RESOURCE $guest HAS AN ISSUE
+        echo
+        exit 1
 fi
 
 source /root/xen/newguest-include.bash
 source /etc/dnc.conf
 [[ ! -n $pubkeys ]] && echo \$pubkeys not defined && exit 1
 
-tpl=slack
+[[ $type = debian ]] && tpl=bullseye
+[[ $type = ubuntu ]] && tpl=jammy
 [[ ! -f /data/templates/$tpl.pcl ]] && echo could not find /data/templates/$tpl.pcl && exit 1
 
 echo
-echo SLACKWARE XEN GUEST CREATION
+echo DEBIAN/UBUNTU XEN GUEST CREATION
 echo
 
 # drbd resource is possibly diskless
@@ -44,12 +46,12 @@ echo -n erasing previous /etc/fstab from tpl...
 cat > lala/etc/fstab <<EOF && echo done
 /dev/xvda1 / btrfs rw,noatime,nodiratime,space_cache=v2,compress=lzo,discard 0 0
 devpts /dev/pts devpts gid=5,mode=620 0 0
-tmpfs /dev/shm tmpfs defaults 0 0
+tmpfs /tmp tmpfs rw,nodev,nosuid,noatime,relatime 0 0
 proc /proc proc defaults 0 0
 EOF
 
 echo -n hostname $short ...
-echo $short > lala/etc/HOSTNAME && echo done
+echo $short > lala/etc/hostname && echo done
 
 # ip with minor as suffix got defined while sourcing dnc.conf
 echo -n tuning /etc/hosts ...
@@ -61,49 +63,39 @@ echo ${ip%/*} $short.localdomain $short >> lala/etc/hosts
 # here sourcing var names, not vars themselves (requires BASH)
 echo adding dns entries to /etc/hosts
 for dns in dns1 dns2 dns3; do
-	[[ -n ${!dns} ]] && echo ${!dns} $dns >> lala/etc/hosts
+        [[ -n ${!dns} ]] && echo ${!dns} $dns >> lala/etc/hosts
 done; unset dns
 
 # here sourceing the vars themselves
 echo -n erasing previous /etc/resolv.conf from tpl...
 rm -f lala/etc/resolv.conf
 for dns in $dns1 $dns2 $dns3; do
-	echo nameserver $dns >> lala/etc/resolv.conf
+        echo nameserver $dns >> lala/etc/resolv.conf
 done && echo done; unset dns
 
-# WARNING ESCAPES ARE IN THERE
-echo -n rc.inet1 ...
-cat > lala/etc/rc.d/rc.inet1 <<EOF && echo done
-#!/bin/bash
+echo -n network/interfaces ...
+cat > lala/etc/network/interfaces <<EOF && echo done
+auto lo
+iface lo inet loopback
 
-echo rc.inet1 PATH is \$PATH
+auto eth0
+iface eth0 inet static
+	address $ip
+	gateway $gw
 
-if [[ \$1 = stop || \$1 = down ]]; then
-	/etc/rc.d/rc.sshd stop
-	route delete default
-	ifconfig eth0 down
-	ifconfig lo down
-else
-	echo -n lo ...
-	ifconfig lo up && echo done
-
-	echo -n eth0 ...
-	ifconfig eth0 $ip up && echo done
-
-	echo -n default route ...
-	route add default gw $gw && echo done
-
-	# self-verbose
-	/etc/rc.d/rc.sshd start
-fi
 EOF
-chmod +x lala/etc/rc.d/rc.inet1
 
 # in case template had host keys within
 echo clean-up ssh host keys
 rm -f lala/etc/ssh/ssh_host_*
 
-# NO NEED ON SLACKWARE - ALL HOST KEYS GET GENERATED ANYHOW
+# [FAILED] Failed to start OpenBSD Secure Shell server.
+# we have better entropy on bare-metal anyway
+#ssh-keygen -q -t dsa -f lala/etc/ssh/ssh_host_dsa_key -C root@$name -N ''
+#ssh-keygen -q -t rsa -f lala/etc/ssh/ssh_host_rsa_key -C root@$name -N ''
+echo generating ECDSA and EDDSA host keys
+ssh-keygen -q -t ecdsa -f lala/etc/ssh/ssh_host_ecdsa_key -C root@$short -N ''
+ssh-keygen -q -t ed25519 -f lala/etc/ssh/ssh_host_ed25519_key -C root@$short -N ''
 
 echo -n adding pubkeys...
 mkdir -p lala/root/.ssh/
@@ -121,7 +113,7 @@ rmdir /data/guests/$guest/lala/
 echo -n writing guest config...
 cat > /data/guests/$guest/$guest <<EOF && echo done
 kernel = "/data/kernels/5.2.21.domureiser4.vmlinuz"
-root = "/dev/xvda1 ro console=hvc0 mitigations=off"
+root = "/dev/xvda1 ro console=hvc0 net.ifnames=0 biosdevname=0 netcfg/do_not_use_netplan=true mitigations=off"
 #extra = "init=/bin/bash"
 name = "$guest"
 memory = 1024
