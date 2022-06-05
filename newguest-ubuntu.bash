@@ -8,13 +8,6 @@ minor=$2
 [[ -n $3 ]] && name=$3 || name=dnc$minor
 short=${name%%\.*}
 
-if [[ `drbdadm status $guest` ]]; then
-        echo DRBD RESOURCE $guest IS FINE
-else
-        echo DRBD RESOURCE $guest HAS AN ISSUE
-        exit 1
-fi
-
 source /root/xen/newguest-include.bash
 source /etc/dnc.conf
 [[ ! -n $pubkeys ]] && echo \$pubkeys not defined && exit 1
