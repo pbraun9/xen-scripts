@@ -1,28 +1,23 @@
 #!/bin/bash
 set -e
 
-[[ -z $2 ]] && echo usage: "${0##*/} <debian|ubuntu> <DRBD-MINOR> [RESOURCE/GUEST]" && exit 1
-type=$1
+[[ -z $2 ]] && echo usage: "${0##*/} <TEMPLATE> <DRBD-MINOR> [RESOURCE/GUEST]" && exit 1
+tpl=$1
 minor=$2
-[[ -n $3 ]] && guest=$2 || guest=dnc$minor
-[[ -n $3 ]] && name=$2 || name=dnc$minor
+[[ -n $3 ]] && guest=$3 || guest=dnc$minor
+[[ -n $3 ]] && name=$3 || name=dnc$minor
 short=${name%%\.*}
 
 if [[ `drbdadm status $guest` ]]; then
         echo DRBD RESOURCE $guest IS FINE
-        echo
 else
         echo DRBD RESOURCE $guest HAS AN ISSUE
-        echo
         exit 1
 fi
 
 source /root/xen/newguest-include.bash
 source /etc/dnc.conf
 [[ ! -n $pubkeys ]] && echo \$pubkeys not defined && exit 1
-
-[[ $type = debian ]] && tpl=bullseye
-[[ $type = ubuntu ]] && tpl=jammy
 [[ ! -f /data/templates/$tpl.pcl ]] && echo could not find /data/templates/$tpl.pcl && exit 1
 
 echo
