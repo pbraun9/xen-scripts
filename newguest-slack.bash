@@ -121,8 +121,10 @@ vif = [ 'bridge=guestbr0, vifname=$guest' ]
 type = "pvh"
 EOF
 
-echo starting guest $guest
-xl create /data/guests/$guest/$guest && echo -e \\nGUEST $guest HAS BEEN STARTED
-echo up > /data/guests/$guest/state
-echo
+#echo starting guest $guest
+#xl create /data/guests/$guest/$guest && echo -e \\nGUEST $guest HAS BEEN STARTED
+#echo up > /data/guests/$guest/state
+#echo
+
+/root/xen/startguest-lowram.bash $guest
 
