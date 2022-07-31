@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# assumes template is ready (bsd/malabar-ffs)
+# this script assumes template $tpl is available (see the bsd/malabar-ffs guide)
 
 [[ -z $1 ]] && echo usage: ${0##*/} GUEST-NAME && exit 1
 guest=$1

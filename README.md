@@ -2,6 +2,9 @@
 
 ### requirements
 
+- KSH93
+- DSH (ClusterIt)
+
 _assuming a [shared](https://pub.nethence.com/storage/) /data/ volume across the nodes, be it NFS, GFS2 or OCFS2_
 
 	mkdir -p /data/guests/ /data/kernels/ /data/templates/
@@ -9,14 +12,15 @@ _assuming a [shared](https://pub.nethence.com/storage/) /data/ volume across the
 
 ### newguest-* scripts
 
-_assuming [XEN templates](https://pub.nethence.com/xen/) already has sysprep built-in incl._
+_assuming [XEN templates](https://pub.nethence.com/xen/) with sysprep built-in_
 
-- bashrc
+- bashrc & completion
 - timezone
 - package repositories
 - kernel modules (namely tmem)
+- file index
 
-_those are the steps taken care of_
+_note only those are the steps taken care of by the script_
 
 - fstab
 - network setup

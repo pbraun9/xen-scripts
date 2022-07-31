@@ -9,6 +9,7 @@ node1=$1
 node2=$2
 guest=$3
 suffix=$4
+
 (( port = 7000 + suffix ))
 
 # size in GB (not GiB)
