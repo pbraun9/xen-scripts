@@ -6,6 +6,8 @@ guestpath=/data/guests/$guest
 
 [[ ! -d $guestpath/ ]] && echo $guestpath/ not found && exit 1
 
+echo down > $guestpath/state
+
 node=`dsh -e -g xen "xl list | grep -E \"^$guest[[:space:]]+\"" | cut -f1 -d:`
 [[ -z $node ]] && echo $guest does not seem to be alive && exit 1
 (( `echo "$node" | wc -l` > 1 )) && echo -e "ERROR guest lives on multiple nodes!\n$node" && exit 1
@@ -26,6 +28,4 @@ done
 tmp=`ssh $node "xl list | grep -E \"^$guest[[:space:]]+\"" | cut -f1 -d:`
 [[ -n $tmp ]] && echo $guest failed to shut down gracefully && ssh $node xl destroy $guest
 unset tmp
-
-echo down > $guestpath/state
 

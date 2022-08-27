@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+export CLUSTER=/root/dsh.conf
+
 [[ -z $1 ]] && echo "${0##*/} <GUEST-NAME>" && exit 1
 guest=$1
 
@@ -19,6 +21,7 @@ free=`echo $freeram | awk '{print $NF}'`
 node=`echo $freeram | cut -f1 -d:`
 echo "least used RAM node is $node ($free M free)"
 
-ssh $node "xl create $conf" && echo GUEST $guest HAS BEEN STARTED ON NODE $node
+ssh $node "xl create $conf"
+echo -e \\nGUEST $guest HAS BEEN STARTED ON NODE $node\\n
 echo up > $guestpath/state
 

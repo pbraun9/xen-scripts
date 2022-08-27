@@ -1,16 +1,16 @@
 #!/bin/bash
 set -e
 
-[[ -z $4 ]] && echo "usage: ${0##*/} <node1> <node2> <guest name> <ip suffix>" && exit 1
+[[ -z $4 ]] && echo "usage: ${0##*/} <node1> <node2> <guest name> <drbd minor>" && exit 1
 
 source /etc/dnc.conf
 
 node1=$1
 node2=$2
 guest=$3
-suffix=$4
+minor=$4
 
-(( port = 7000 + suffix ))
+(( port = 7000 + minor ))
 
 # size in GB (not GiB)
 #size=25G
@@ -36,7 +36,7 @@ echo
 echo -n writing /etc/drbd.d/$guest.res ...
 cat > /etc/drbd.d/$guest.res <<EOF
 resource $guest {
-	device minor $suffix;
+	device minor $minor;
 	meta-disk internal;
 EOF
 
