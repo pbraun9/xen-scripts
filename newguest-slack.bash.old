@@ -8,27 +8,25 @@ minor=$2
 [[ -n $3 ]] && name=$3 || name=dnc$minor
 short=${name%%\.*}
 
-source /root/xen/newguest-functions.bash
+source /root/xen/newguest-include.bash
 source /etc/dnc.conf
 [[ ! -n $pubkeys ]] && echo \$pubkeys not defined && exit 1
 [[ ! -f /data/templates/$tpl.pcl ]] && echo could not find /data/templates/$tpl.pcl && exit 1
 
-# gw and friends got sourced by dnc.conf
-# but suffix gets eveluated by dec2ip function
-dec2ip
-ip=10.1.$suffix
-echo ip is $ip
+echo
+echo SLACKWARE XEN GUEST CREATION
 echo
 
+# drbd resource is possibly diskless
+partclone.btrfs --restore --source /data/templates/$tpl.pcl --output /dev/drbd/by-res/$guest/0
+mkdir -p /data/guests/$guest/lala/
+mount -o compress=lzo /dev/drbd/by-res/$guest/0 /data/guests/$guest/lala/
+btrfs filesystem resize max /data/guests/$guest/lala/
 echo
+
 echo SYSTEM PREPARATION
 echo
 
-# mounting a thin snapshot (already resized)
-# drbd resource is possibly diskless
-echo -n mounting butterfs lzo...
-mkdir -p /data/guests/$guest/lala/
-mount -o compress=lzo /dev/drbd/by-res/$guest/0 /data/guests/$guest/lala/ && echo done
 # TODO use absolute path instead
 cd /data/guests/$guest/
 
@@ -43,6 +41,7 @@ EOF
 echo -n hostname $short ...
 echo $short > lala/etc/HOSTNAME && echo done
 
+# ip with minor as suffix got defined while sourcing dnc.conf
 echo -n tuning /etc/hosts ...
 echo 127.0.0.1 localhost.localdomain localhost > lala/etc/hosts
 echo ::1 localhost.localdomain localhost >> lala/etc/hosts

@@ -1,34 +1,56 @@
 #!/bin/bash
 set -e
 
-[[ -z $4 ]] && echo "usage: ${0##*/} <node1> <node2> <guest name> <drbd minor>" && exit 1
+[[ -z $3 ]] && echo "usage: ${0##*/} <template> <drbd minor> <resource/guest name>" && exit 1
 
 source /etc/dnc.conf
 
-node1=$1
-node2=$2
+tpl=$1
+minor=$2
 guest=$3
-minor=$4
 
-(( port = 7000 + minor ))
+[[ ! -b /dev/thin/$tpl ]] && echo there is no LV matching template $tpl && exit 1
 
-# size in GB (not GiB)
-#size=25G
-size=10G
+case $tpl in
+	slack150)
+		node1=pmr1
+		node2=pmr2
+		;;
+	bullseye)
+		node1=pmr2
+		node2=pmr3
+		;;
+	jammy)
+		node1=pmr3
+		node2=pmr1
+		;;
+	*)
+		echo donno how to distribute snapshot from template $tpl
+		exit 1
+		;;
+esac
+
+# starts at tcp port 1024
+(( port = 1024 + minor ))
 
 # initial checks
 [[ -f /etc/drbd.d/$guest.res ]] && echo /etc/drbd.d/$guest.res already exists && exit 1
 
 echo
-echo CREATE THIN VOLUME ON TWO NODES
+echo CREATE THIN SNAPSHOT FROM $tpl
 echo
 
-ssh $node1 lvcreate --virtualsize $size --thin -n $guest thin/pool
-ssh $node2 lvcreate --virtualsize $size --thin -n $guest thin/pool
-ssh $node1 lvs -o+discards thin/$guest
-ssh $node2 lvs -o+discards thin/$guest
-
+ssh $node1 "lvcreate --snapshot -n $guest \
+	--setactivationskip n --ignoreactivationskip \
+	thin/$tpl >> /var/log/lvm.log 2>&1 && echo thin/$tpl up on $node1"
+ssh $node2 "lvcreate --snapshot -n $guest \
+	--setactivationskip n --ignoreactivationskip \
+	thin/$tpl >> /var/log/lvm.log 2>&1 && echo thin/$tpl up on $node2"
+	# --setautoactivation y
+#ssh $node1 lvs -o+discards thin/$guest
+#ssh $node2 lvs -o+discards thin/$guest
 echo
+
 echo DRBD CONFIG AND SYNC
 echo
 
@@ -75,17 +97,7 @@ for node in $nodes; do
 	fi
 done; unset node
 
-echo
-echo INITIALIZE THE VOLUME
-echo
-
-echo create-md on $node1
-ssh $node1 drbdadm create-md $guest
-echo
-
-echo create-md on $node2
-ssh $node2 drbdadm create-md $guest
-echo
+# do not initialize volume otherwise we loose the snapshot template
 
 for node in $nodes; do
 	echo resource $guest up on $node
@@ -93,11 +105,8 @@ for node in $nodes; do
 done; unset node
 echo
 
-# only once on one of the mirrors
-echo drbd-fast-sync
+echo waiting 3 seconds for the resources to connect...
 sleep 3
-ssh $node1 drbdadm new-current-uuid --clear-bitmap $guest
 echo
-
 drbdadm status $guest
 

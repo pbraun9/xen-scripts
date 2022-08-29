@@ -8,7 +8,7 @@ minor=$2
 [[ -n $3 ]] && name=$3 || name=dnc$minor
 short=${name%%\.*}
 
-source /root/xen/newguest-include.bash
+source /root/xen/newguest-functions.bash
 source /etc/dnc.conf
 [[ ! -n $pubkeys ]] && echo \$pubkeys not defined && exit 1
 [[ ! -f /data/templates/$tpl.pcl ]] && echo could not find /data/templates/$tpl.pcl && exit 1

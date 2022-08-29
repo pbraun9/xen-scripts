@@ -9,7 +9,7 @@ guest=$1
 source /etc/dnc.conf
 [[ -z $nodes ]] && echo \$nodes not defined && exit 1
 
-/root/xen/shuguest.bash $guest
+/root/xen/shutdown-guest.bash $guest
 echo
 
 rm -rf /data/guests/$guest/
