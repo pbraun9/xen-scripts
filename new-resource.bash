@@ -1,13 +1,15 @@
 #!/bin/bash
 set -e
 
-[[ -z $3 ]] && echo "usage: ${0##*/} <template> <drbd minor> <resource/guest name>" && exit 1
+[[ -z $3 ]] && echo "usage: ${0##*/} <template> <drbd minor> <drbd resource name>" && exit 1
 
 source /etc/dnc.conf
 
 tpl=$1
 minor=$2
 guest=$3
+
+device=/dev/drbd$minor
 
 [[ ! -b /dev/thin/$tpl ]] && echo there is no LV matching template $tpl && exit 1
 
@@ -31,7 +33,7 @@ case $tpl in
 esac
 
 # starts at tcp port 1024
-(( port = 1024 + minor ))
+(( port = 1023 + minor ))
 
 # initial checks
 [[ -f /etc/drbd.d/$guest.res ]] && echo /etc/drbd.d/$guest.res already exists && exit 1
@@ -109,4 +111,8 @@ echo waiting 3 seconds for the resources to connect...
 sleep 3
 echo
 drbdadm status $guest
+
+echo -n random butterfs uuid for $device file-system...
+btrfs check --readonly $device >/dev/null 2>&1 && echo y | btrfstune -u $device >/dev/null 2>&1 && echo done
+echo
 

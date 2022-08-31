@@ -28,7 +28,7 @@ echo
 # drbd resource is possibly diskless
 echo -n mounting butterfs lzo...
 mkdir -p /data/guests/$guest/lala/
-mount -o compress=lzo /dev/drbd/by-res/$guest/0 /data/guests/$guest/lala/ && echo done
+mount -o compress=lzo /dev/drbd/by-res/$guest/0 /data/guests/$guest/lala/ && echo done || exit 1
 # TODO use absolute path instead
 cd /data/guests/$guest/
 

@@ -1,17 +1,18 @@
 #!/bin/bash
 set -e
 
-[[ -z $4 ]] && echo "usage: ${0##*/} <node1> <node2> <drbd minor> <resource/guest name>" && exit 1
+[[ -z $4 ]] && echo "usage: ${0##*/} <node1> <node2> <drbd minor> <drbd resource name>" && exit 1
 
 source /etc/dnc.conf
 
 node1=$1
 node2=$2
-minor=$2
+minor=$3
 guest=$4
 
-# tcp port 1001 to 1023 for templates
-(( port = 1000 + minor ))
+# tcp port goes as drbd minor for templates
+# choose wisely (below 1024, not to interfere with guests)
+(( port = minor ))
 
 # size in GB (not GiB)
 #size=25G
