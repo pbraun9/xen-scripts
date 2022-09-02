@@ -25,10 +25,15 @@ echo
 echo CREATE THIN VOLUME ON TWO NODES
 echo
 
+echo $node1
 ssh $node1 lvcreate --virtualsize $size --thin -n $guest thin/pool
-ssh $node2 lvcreate --virtualsize $size --thin -n $guest thin/pool
 ssh $node1 lvs -o+discards thin/$guest
+echo
+
+echo $node2
+ssh $node2 lvcreate --virtualsize $size --thin -n $guest thin/pool
 ssh $node2 lvs -o+discards thin/$guest
+echo
 
 echo
 echo DRBD CONFIG AND SYNC

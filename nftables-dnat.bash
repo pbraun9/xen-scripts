@@ -2,20 +2,20 @@
 
 debug=0
 
-source /root/xen/newguest-functions.bash
 source /etc/dnc.conf
+source /root/xen/newguest-functions.bash
 
-# network is 10.1.0.0/16
-# 10.1.0.1 --> 10.1.4.255
-# starts at tcp port 1024
-for minor in `seq 1 1279`; do
-	(( port = 1023 + minor ))
-	dec2ip
-	ip=10.1.$suffix
+# network is 10.1.0.0/16: 10.1.0.1 - 10.1.4.255
+# guestid matches tcp port which starts at 1024
+for guestid in `seq 1024 3000`; do
+	(( port = guestid ))
+
+	dec2ip # defines ip
+
 	cat <<EOF
                 iif \$nic tcp dport $port dnat $ip:22;
 EOF
-	unset port suffix ip
+	unset port ip
 done
-unset minor
+unset guestid
 

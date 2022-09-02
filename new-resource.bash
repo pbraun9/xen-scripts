@@ -11,8 +11,6 @@ guest=$3
 
 device=/dev/drbd$minor
 
-[[ ! -b /dev/thin/$tpl ]] && echo there is no LV matching template $tpl && exit 1
-
 case $tpl in
 	slack150)
 		node1=pmr1
@@ -27,13 +25,16 @@ case $tpl in
 		node2=pmr1
 		;;
 	*)
-		echo donno how to distribute snapshot from template $tpl
+		echo donno where to find snapshot origin for template $tpl
 		exit 1
 		;;
 esac
 
-# starts at tcp port 1024
-(( port = 1023 + minor ))
+# assuming decent guest id
+# 0: guest configs on shared disk file-system
+# 1 - 1023: templates and powerslack
+# 1024 - 65534: for users
+(( port = minor ))
 
 # initial checks
 [[ -f /etc/drbd.d/$guest.res ]] && echo /etc/drbd.d/$guest.res already exists && exit 1
@@ -42,16 +43,23 @@ echo
 echo CREATE THIN SNAPSHOT FROM $tpl
 echo
 
+echo $node1
+#dsh -e -w $node1 -s /root/xen/remote-check-lv.bash
 ssh $node1 "lvcreate --snapshot -n $guest \
 	--setactivationskip n --ignoreactivationskip \
 	thin/$tpl >> /var/log/lvm.log 2>&1 && echo thin/$tpl up on $node1"
+	# --setautoactivation y
+echo
+
+echo $node2
+#dsh -e -w $node2 -s /root/xen/remote-check-lv.bash
 ssh $node2 "lvcreate --snapshot -n $guest \
 	--setactivationskip n --ignoreactivationskip \
 	thin/$tpl >> /var/log/lvm.log 2>&1 && echo thin/$tpl up on $node2"
-	# --setautoactivation y
+echo
+
 #ssh $node1 lvs -o+discards thin/$guest
 #ssh $node2 lvs -o+discards thin/$guest
-echo
 
 echo DRBD CONFIG AND SYNC
 echo

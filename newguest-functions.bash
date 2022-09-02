@@ -1,23 +1,11 @@
 
-[[ ! -d /etc/drbd.d/ ]] && echo /etc/drbd.d/ not found && exit 1
-
-if [[ `drbdadm status $guest` ]]; then
-        echo DRBD RESOURCE $guest IS FINE
-else
-        echo DRBD RESOURCE $guest HAS AN ISSUE
-        exit 1
-fi
-
-# /data/ is a shared among the nodes
-for d in /data/guests /data/kernels /data/templates; do
-        [[ ! -d $d/ ]] && echo create a shared-disk $d/ folder first && exit 1
-done; unset d
-
-# requires minor
-# sets suffix
+# defines $ip
 function dec2ip {
+	[[ -z $prefix ]] && echo function dec2ip requires \$prefix from /etc/dnc.conf && exit 1
+	[[ -z $guestid ]] && echo function dec2ip requires \$guestid && exit 1
+
 	# hex from dec
-        tmp=`printf "%x" $minor`
+        tmp=`printf "%x" $guestid`
 
 	if (( `echo -n $tmp | wc -c` < 2 )); then
 		tmp=000$tmp
@@ -27,18 +15,15 @@ function dec2ip {
                 tmp=0$tmp
 	fi
 
-	(( debug > 0 )) && echo tmp is $tmp
-
         c=`echo $tmp | sed -r 's/(..)../\1/'`
         d=`echo $tmp | sed -r 's/..(..)/\1/'`
+	unset tmp # will this break set -e in case $tmp wasn't necessary?
 
 	(( debug > 0 )) && echo c is $c
 	(( debug > 0 )) && echo d is $d
 
-	# ip /16 suffix from hex
-        suffix=$(( 0x$c )).$(( 0x$d ))
-
-	(( debug > 0 )) && echo suffix is $suffix
+	# prefix from config and /16 suffix from hex
+        ip=$prefix.$(( 0x$c )).$(( 0x$d ))
 
 	unset tmp c d
 }

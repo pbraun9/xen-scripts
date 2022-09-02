@@ -1,5 +1,8 @@
 #!/bin/bash
 set -e
+echo
+
+# TODO ifconfig.?
 
 # this script assumes template $tpl is available (see the bsd/malabar-ffs guide)
 
@@ -26,7 +29,6 @@ for d in /data/guests /data/kernels /data/templates; do
 	[[ ! -d $d/ ]] && echo create a shared-disk $d/ folder first && exit 1
 done; unset d
 
-echo
 echo NETBSD XEN GUEST CREATION
 echo
 

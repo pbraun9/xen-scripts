@@ -13,6 +13,7 @@ source /etc/dnc.conf
 source /root/xen/newguest-functions.bash
 source /root/xen/newguest-include-checks.bash
 [[ ! -n $pubkeys ]] && echo \$pubkeys not defined && exit 1
+[[ ! -f /data/templates/$tpl.pcl ]] && echo could not find /data/templates/$tpl.pcl && exit 1
 
 # gw and friends got sourced by dnc.conf
 # but guest ip gets eveluated by dec2ip function
@@ -23,10 +24,12 @@ echo DEBIAN/UBUNTU SYSTEM PREPARATION
 echo
 
 # drbd resource is possibly diskless
+partclone.btrfs --restore --source /data/templates/$tpl.pcl --output /dev/drbd/by-res/$guest/0
+
 echo -n mounting butterfs lzo...
 mkdir -p /data/guests/$guest/lala/
 mount -o compress=lzo /dev/drbd/by-res/$guest/0 /data/guests/$guest/lala/
-# (already resized)
+btrfs filesystem resize max /data/guests/$guest/lala/
 echo
 
 # TODO use absolute path instead

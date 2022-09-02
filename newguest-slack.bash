@@ -1,27 +1,25 @@
 #!/bin/bash
 set -e
+echo
 
-[[ -z $2 ]] && echo usage: "${0##*/} <TEMPLATE> <DRBD-MINOR> [RESOURCE/GUEST]" && exit 1
+[[ -z $2 ]] && echo usage: "${0##*/} <TEMPLATE> <DRBD-MINOR> [GUEST HOSTNAME]" && exit 1
 tpl=$1
 minor=$2
 [[ -n $3 ]] && guest=$3 || guest=dnc$minor
 [[ -n $3 ]] && name=$3 || name=dnc$minor
 short=${name%%\.*}
 
-source /root/xen/newguest-functions.bash
 source /etc/dnc.conf
+source /root/xen/newguest-functions.bash
+source /root/xen/newguest-include-checks.bash
 [[ ! -n $pubkeys ]] && echo \$pubkeys not defined && exit 1
-[[ ! -f /data/templates/$tpl.pcl ]] && echo could not find /data/templates/$tpl.pcl && exit 1
 
 # gw and friends got sourced by dnc.conf
-# but suffix gets eveluated by dec2ip function
+# but guest ip gets eveluated by dec2ip function
+guestid=$minor
 dec2ip
-ip=10.1.$suffix
-echo ip is $ip
-echo
 
-echo
-echo SYSTEM PREPARATION
+echo SLACKWARE SYSTEM PREPARATION
 echo
 
 # mounting a thin snapshot (already resized)
@@ -32,7 +30,7 @@ mount -o compress=lzo /dev/drbd/by-res/$guest/0 /data/guests/$guest/lala/ && ech
 # TODO use absolute path instead
 cd /data/guests/$guest/
 
-echo -n erasing previous /etc/fstab from tpl...
+echo -n erasing previous /etc/fstab from template...
 cat > lala/etc/fstab <<EOF && echo done
 /dev/xvda1 / btrfs rw,noatime,nodiratime,space_cache=v2,compress=lzo,discard 0 0
 devpts /dev/pts devpts gid=5,mode=620 0 0
@@ -43,6 +41,7 @@ EOF
 echo -n hostname $short ...
 echo $short > lala/etc/HOSTNAME && echo done
 
+# ip got defined by dec2ip
 echo -n tuning /etc/hosts ...
 echo 127.0.0.1 localhost.localdomain localhost > lala/etc/hosts
 echo ::1 localhost.localdomain localhost >> lala/etc/hosts
@@ -79,7 +78,7 @@ else
 	ifconfig lo up && echo done
 
 	echo -n eth0 ...
-	ifconfig eth0 $ip up && echo done
+	ifconfig eth0 $ip/16 up && echo done
 
 	echo -n default route ...
 	route add default gw $gw && echo done
