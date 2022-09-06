@@ -1,24 +1,27 @@
 #!/bin/bash
 set -e
-echo
 
-[[ -z $2 ]] && echo usage: "${0##*/} <TEMPLATE> <DRBD-MINOR> [GUEST HOSTNAME]" && exit 1
-tpl=$1
-minor=$2
-[[ -n $3 ]] && guest=$3 || guest=dnc$minor
-[[ -n $3 ]] && name=$3 || name=dnc$minor
+# no need for $tpl here since we already defined that while cloning the origin snapshot
+[[ -z $1 ]] && echo usage: "${0##*/} <drbd minor> [guest hostname]" && exit 1
+minor=$1
+[[ -n $2 ]] && guest=$2 || guest=dnc$minor
+
+guestid=$minor
+name=$guest
 short=${name%%\.*}
 
 source /etc/dnc.conf
 source /root/xen/newguest-functions.bash
 source /root/xen/newguest-include-checks.bash
-[[ ! -n $pubkeys ]] && echo \$pubkeys not defined && exit 1
 
 # gw and friends got sourced by dnc.conf
 # but guest ip gets eveluated by dec2ip function
-guestid=$minor
 dec2ip
 
+[[ -z $ip ]] && bomb missing \$ip
+[[ -z $gw ]] && bomb missing \$gw
+
+echo
 echo SLACKWARE SYSTEM PREPARATION
 echo
 

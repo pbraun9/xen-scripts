@@ -1,101 +1,95 @@
 #!/bin/bash
 set -e
-echo
 
 # TODO ifconfig.?
 
-# this script assumes template $tpl is available (see the bsd/malabar-ffs guide)
+# STABLE vs. CURRENT
+#kernel=/data/kernels/netbsd9/netbsd-XEN3_DOMU.gz
+kernel=/data/kernels/netbsd-current/netbsd-XEN3_DOMU.gz
 
-[[ -z $1 ]] && echo usage: ${0##*/} GUEST-NAME && exit 1
-guest=$1
+# no need for $tpl here since we already defined that while cloning the origin snapshot
+[[ -z $1 ]] && echo usage: "${0##*/} <drbd minor> [guest hostname]" && exit 1
+minor=$1
+[[ -n $2 ]] && guest=$2 || guest=dnc$minor
 
-source /root/xen/netbsd.conf
-[[ -z $repo ]] && echo define \$repo && exit 1
-[[ -z $name ]] && echo define \$name && exit 1
-[[ -z $tpl ]] && echo define \$tpl && exit 1
-
+guestid=$minor
+name=$guest
 short=${name%%\.*}
 
-[[ ! -f $tpl ]] && echo could not find $tpl && exit 1
-
-[[ ! -d /etc/drbd.d/ ]] && echo /etc/drbd.d/ not found && exit 1
-
-[[ ! -f /etc/dnc.conf ]] && could not find /etc/dnc.conf && exit 1
 source /etc/dnc.conf
-[[ ! -n $pubkeys ]] && echo \$pubkeys not defined && exit 1
+source /root/xen/newguest-functions.bash
+source /root/xen/newguest-include-checks.bash
 
-# /data/ is a shared among the nodes
-for d in /data/guests /data/kernels /data/templates; do
-	[[ ! -d $d/ ]] && echo create a shared-disk $d/ folder first && exit 1
-done; unset d
+# gw and friends got sourced by dnc.conf
+# but guest ip gets eveluated by dec2ip function
+dec2ip
 
-echo NETBSD XEN GUEST CREATION
+[[ -z $kernel ]] && bomb missing \$kernel
+[[ -z $ip ]] && bomb missing \$ip
+[[ -z $gw ]] && bomb missing \$gw
+
 echo
-
-# xenbr0 -- perimeter snat
-#    br0 -- guests' vlans
-echo -n writing guest config...
-mkdir -p /data/guests/$guest/lala/
-cat > /data/guests/$guest/$guest <<EOF && echo done
-kernel = "$repo/netbsd-XEN3_DOMU.gz"
-root = "xbd0a"
-#extra = "-v -s"
-name = "$guest"
-memory = 512
-vcpus = 3
-disk = ['phy:/dev/drbd/by-res/$guest/0,xvda,w']
-vif = [ 'bridge=guestbr0,vifname=$guest.0',
-        'bridge=guestbr0,vifname=$guest.1']
-#type = "pvh"
-EOF
-
-# possibly diskless
-echo writing makefs-based image to resource $guest
-nice dd if=$tpl of=/dev/drbd/by-res/$guest/0 bs=1M status=progress
-
-cd /data/guests/$guest/
-echo -n mounting into lala/ ...
-mount -t ufs -o ufstype=44bsd /dev/drbd/by-res/$guest/0 lala/ && echo done
-mount | grep ufs
-echo
-
 echo SYSPREP FOR HOSTNAME $name
+echo
+
+echo -n mounting $guest FFS read-write into /data/guests/$guest/lala/ ...
+[[ -n `mount | grep guests/$guest/` ]] && bomb $guest already mounted
+mkdir -p /data/guests/$guest/lala/
+cd /data/guests/$guest/
+mount -t ufs -o rw,ufstype=44bsd /dev/drbd/by-res/$guest/0 lala/ && echo done
+mount | grep ufs
 echo
 
 echo -n hostname $name ...
 echo $short > lala/etc/myname && echo done
 
 # we're lucky the dnc.conf evaluation works on $ip even though it was loaded before $minor got defined
-echo tuning /etc/hosts
-mv lala/etc/hosts lala/etc/hosts.dist
-echo -e "::1\t\t\tlocalhost localhost." >> lala/etc/hosts
-echo -e "127.0.0.1\t\tlocalhost localhost." > lala/etc/hosts
-echo -e "${ip%/*}\t$short" >> lala/etc/hosts
-[[ -n $gw ]] && echo -e "$gw\t\tgw" >> lala/etc/hosts
-for dns in dns1 dns2 dns3; do
-	[[ -n ${!dns} ]] && echo -e "${!dns}\t\t$dns" >> lala/etc/hosts
-done; unset dns
+echo -n static name resolution...
+[[ ! -f lala/etc/hosts.dist ]] && mv lala/etc/hosts lala/etc/hosts.dist
+cat > lala/etc/hosts <<EOF && echo done
+::1                     localhost localhost.
+127.0.0.1               localhost localhost.
 
-for dns in dns1 dns2 dns3; do
-	[[ -n ${!dns} ]] && echo -e "nameserver ${!dns}" >> lala/etc/resolv.conf
-done; unset dns
+$ip		$short
+$gw		gw
+$dns1		dns1
+$dns2		dns2
 
-echo -n adding pubkeys...
-mkdir -p lala/root/.ssh/
+EOF
+
+echo -n xennet0 ...
+echo inet $ip/16 up > lala/etc/ifconfig.xennet0 && echo done
+
+echo -n gw...
+echo $gw > lala/etc/mygate && echo done
+
+# erase anything previously define in the template
+echo -n dynanic name resolution...
+cat > lala/etc/resolv.conf <<EOF && echo done
+nameserver $dns1
+nameserver $dns2
+
+EOF
+
+# THIS BREAKS THE FS
+# kernel: ufs: error (device drbd1027): ufs_new_inode: cylinder group 0 corrupted - error in inode bitmap
+# kernel: ufs: ufs_fill_super(): fs is bad
+#mkdir -p lala/root/.ssh/
+
+# erase previously defined pubkeys from template
+echo -n pubkeys...
+[[ ! -d lala/root/.ssh/ ]] && bomb could not find folder lala/root/.ssh/
 cat > lala/root/.ssh/authorized_keys <<EOF && echo done
 $pubkeys
 EOF
 chmod 700 lala/root/.ssh/
 chmod 600 lala/root/.ssh/authorized_keys
 
-# template should NOT have host keys within, erasing anyways
+# erasing ssh host keys from template
 rm -f lala/etc/ssh/ssh_host_*
 
-# we have better entropy on bare-metal
-ssh-keygen -q -t dsa -f lala/etc/ssh/ssh_host_dsa_key -C root@$name -N ''
-ssh-keygen -q -t rsa -f lala/etc/ssh/ssh_host_rsa_key -C root@$name -N ''
-ssh-keygen -q -t ecdsa -f lala/etc/ssh/ssh_host_ecdsa_key -C root@$name -N ''
-ssh-keygen -q -t ed25519 -f lala/etc/ssh/ssh_host_ed25519_key -C root@$name -N ''
+# ssh host keys get created by netbsd's sshd init script
+# no need to deal with that here (although we would have better entropy)
 
 echo -n un-mounting lala/ ...
 umount lala/ && echo done
@@ -103,6 +97,23 @@ rmdir lala/
 
 # we're using it right away
 #drbdadm secondary $guest
+
+# xenbr0 -- perimeter snat
+#    br0 -- guests' vlans
+echo -n guest config...
+mkdir -p /data/guests/$guest/lala/
+cat > /data/guests/$guest/$guest <<EOF && echo done
+kernel = "$kernel"
+root = "xbd0a"
+#extra = "-v -s"
+name = "$guest"
+memory = 1024
+vcpus = 2
+disk = ['phy:/dev/drbd/by-res/$guest/0,xvda,w']
+vif = [ 'bridge=guestbr0,vifname=$guest.0',
+        'bridge=guestbr0,vifname=$guest.1']
+#type = "pvh"
+EOF
 
 # resource should be fully up and running before trying to start the guest on it
 #Error: Can't open /dev/drbd/by-res/dnc16/0. Read-only file system.

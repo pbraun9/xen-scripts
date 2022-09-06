@@ -1,4 +1,32 @@
 
+function usage {
+	echo
+	echo " usage: ${0##*/} $@"
+	echo
+	exit 1
+}
+
+function bomb {
+	time=`date +%s`
+
+	echo $time - user=$user guestid=$guestid minor=$minor guest=$guest name=$name - $@ >> /var/log/dnc.error.log
+	echo
+	echo Error: $@
+	echo
+
+	unset time
+	exit 1
+}
+
+# defines $node
+function whatnode {
+	[[ -z $guest ]] && bomb function $0 requires \$guest
+
+	node=`dsh -e -g xen "xl list $guest 2>&1 | sed 1d | cut -f1 -d' '| grep -v 'rc=-6'" | cut -f1 -d:`
+
+	[[ -z $node ]] && bomb guest $guest does not seem to be running anywhere in the farm
+}
+
 # defines $ip
 function dec2ip {
 	[[ -z $prefix ]] && echo function dec2ip requires \$prefix from /etc/dnc.conf && exit 1

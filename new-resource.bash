@@ -1,32 +1,39 @@
 #!/bin/bash
 set -e
 
-[[ -z $3 ]] && echo "usage: ${0##*/} <template> <drbd minor> <drbd resource name>" && exit 1
+[[ -z $2 ]] && echo "usage: ${0##*/} <template> <drbd minor>" && exit 1
 
 source /etc/dnc.conf
+source /root/xen/newguest-functions.bash
 
 tpl=$1
 minor=$2
-guest=$3
 
+guest=dnc$minor
 device=/dev/drbd$minor
 
 case $tpl in
 	slack150)
 		node1=pmr1
 		node2=pmr2
+		butter=1
 		;;
 	bullseye)
 		node1=pmr2
 		node2=pmr3
+		butter=1
 		;;
 	jammy)
 		node1=pmr3
 		node2=pmr1
+		butter=1
+		;;
+	netbsd-current)
+		node1=pmr1
+		node2=pmr2
 		;;
 	*)
-		echo donno where to find snapshot origin for template $tpl
-		exit 1
+		bomb on which nodes to find snapshot origin for template $tpl?
 		;;
 esac
 
@@ -120,7 +127,9 @@ sleep 3
 echo
 drbdadm status $guest
 
-echo -n random butterfs uuid for $device file-system...
-btrfs check --readonly $device >/dev/null 2>&1 && echo y | btrfstune -u $device >/dev/null 2>&1 && echo done
-echo
+if (( butter == 1 )); then
+	echo -n random butterfs uuid for $device file-system...
+	btrfs check --readonly $device >/dev/null 2>&1 && echo y | btrfstune -u $device >/dev/null 2>&1 && echo done
+	echo
+fi
 
