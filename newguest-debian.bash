@@ -47,24 +47,46 @@ echo -n hostname $short ...
 echo $short > lala/etc/hostname && echo done
 
 # ip got defined by dec2ip
-echo -n tuning /etc/hosts ...
-echo 127.0.0.1 localhost.localdomain localhost > lala/etc/hosts
-echo ::1 localhost.localdomain localhost >> lala/etc/hosts
-echo ${ip%/*} $short.localdomain $short >> lala/etc/hosts
-[[ -n $gw ]] && echo $gw gw.localdomain gw >> lala/etc/hosts && echo done
+#echo -n tuning /etc/hosts ...
+#echo 127.0.0.1 localhost.localdomain localhost > lala/etc/hosts
+#echo ::1 localhost.localdomain localhost >> lala/etc/hosts
+#echo ${ip%/*} $short.localdomain $short >> lala/etc/hosts
+#[[ -n $gw ]] && echo $gw gw.localdomain gw >> lala/etc/hosts && echo done
 
 # here sourcing var names, not vars themselves (requires BASH)
-echo adding dns entries to /etc/hosts
-for dns in dns1 dns2 dns3; do
-        [[ -n ${!dns} ]] && echo ${!dns} $dns >> lala/etc/hosts
-done; unset dns
+#echo adding dns entries to /etc/hosts
+#for dns in dns1 dns2 dns3 dns4; do
+#        [[ -n ${!dns} ]] && echo ${!dns} $dns >> lala/etc/hosts
+#done; unset dns
+
+echo -n writing hosts ...
+cat > lala/etc/hosts <<EOF && echo done
+127.0.0.1       localhost.localdomain localhost
+::1             localhost.localdomain localhost ip6-localhost ip6-loopback
+ff02::1         ip6-allnodes
+ff02::2         ip6-allrouters
+
+${ip%/*} $short.localdomain $short
+
+$gw gw.localdomain gw
+$dns1	dns1.localdomain dns1
+$dns2	dns2.localdomain dns2
+$dns3	dns3.localdomain dns3
+EOF
 
 # here sourceing the vars themselves
-echo -n erasing previous /etc/resolv.conf from tpl...
-rm -f lala/etc/resolv.conf
-for dns in $dns1 $dns2 $dns3; do
-        echo nameserver $dns >> lala/etc/resolv.conf
-done && echo done; unset dns
+#echo -n erasing previous /etc/resolv.conf from tpl...
+#rm -f lala/etc/resolv.conf
+#for dns in $dns1 $dns2 $dns3 $dns4; do
+#        echo nameserver $dns >> lala/etc/resolv.conf
+#done && echo done; unset dns
+echo -n writing resolv.conf ...
+cat > lala/etc/resolv.conf <<EOF && echo done
+nameserver 10.1.255.254
+nameserver 10.1.255.253
+nameserver 10.1.255.252
+nameserver 10.1.255.251
+EOF
 
 echo -n network/interfaces ...
 cat > lala/etc/network/interfaces <<EOF && echo done
@@ -98,6 +120,16 @@ $pubkeys
 EOF
 chmod 700 lala/root/.ssh/
 chmod 600 lala/root/.ssh/authorized_keys
+
+# ADDITIONAL FIXUP - template out of sync
+echo -n writing sources.list ...
+cat > lala/etc/apt/sources.list <<EOF && echo done
+deb http://ftp.ro.debian.org/debian/ bullseye main contrib non-free
+deb http://ftp.ro.debian.org/debian/ bullseye-updates main contrib non-free
+deb http://ftp.ro.debian.org/debian/ bullseye-backports main contrib non-free
+deb http://security.debian.org/debian-security bullseye-security main contrib non-free
+
+EOF
 
 echo -n un-mounting...
 umount /data/guests/$guest/lala/ && echo done

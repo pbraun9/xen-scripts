@@ -54,6 +54,8 @@ $ip		$short
 $gw		gw
 $dns1		dns1
 $dns2		dns2
+$dns3		dns3
+$dns4		dns4
 
 EOF
 
@@ -68,7 +70,8 @@ echo -n dynanic name resolution...
 cat > lala/etc/resolv.conf <<EOF && echo done
 nameserver $dns1
 nameserver $dns2
-
+nameserver $dns3
+nameserver $dns4
 EOF
 
 # THIS BREAKS THE FS

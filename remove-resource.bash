@@ -3,7 +3,7 @@
 # possible to run multiple times even if it fails
 #set -e
 
-[[ -z $1 ]] && echo "usage: ${0##*/} <drbd resource>" && exit 1
+[[ -z $1 ]] && echo "usage: ${0##*/} <drbd resource name>" && exit 1
 guest=$1
 
 source /etc/dnc.conf

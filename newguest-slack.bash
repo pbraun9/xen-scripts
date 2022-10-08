@@ -53,14 +53,14 @@ echo ${ip%/*} $short.localdomain $short >> lala/etc/hosts
 
 # here sourcing var names, not vars themselves (requires BASH)
 echo adding dns entries to /etc/hosts
-for dns in dns1 dns2 dns3; do
+for dns in dns1 dns2 dns3 dns4; do
 	[[ -n ${!dns} ]] && echo ${!dns} $dns >> lala/etc/hosts
 done; unset dns
 
 # here sourceing the vars themselves
 echo -n erasing previous /etc/resolv.conf from tpl...
 rm -f lala/etc/resolv.conf
-for dns in $dns1 $dns2 $dns3; do
+for dns in $dns1 $dns2 $dns3 $dns4; do
 	echo nameserver $dns >> lala/etc/resolv.conf
 done && echo done; unset dns
 

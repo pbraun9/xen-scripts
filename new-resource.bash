@@ -1,15 +1,17 @@
 #!/bin/bash
 set -e
 
-[[ -z $2 ]] && echo "usage: ${0##*/} <template> <drbd minor>" && exit 1
+[[ -z $2 ]] && echo "usage: ${0##*/} <template> <drbd minor> [resource name]" && exit 1
 
 source /etc/dnc.conf
 source /root/xen/newguest-functions.bash
 
 tpl=$1
 minor=$2
+guest=$3
 
-guest=dnc$minor
+[[ -z $guest ]] && guest=dnc$minor
+
 device=/dev/drbd$minor
 
 case $tpl in
