@@ -27,19 +27,18 @@ echo
 
 # mounting a thin snapshot (already resized)
 # drbd resource is possibly diskless
-echo -n mounting butterfs lzo...
+
 mkdir -p /data/guests/$guest/lala/
+
+echo -n mounting btrfs-lzo ...
 mount -o compress=lzo /dev/drbd/by-res/$guest/0 /data/guests/$guest/lala/ && echo done || exit 1
+
+#echo -n mounting f2fs-lz4 ...
+#mount -o rw,noatime,nodiratime,compress_algorithm=lz4,compress_chksum,atgc,gc_merge \
+#	/dev/drbd/by-res/$guest/0 /data/guests/$guest/lala/ && echo done || exit 1
+
 # TODO use absolute path instead
 cd /data/guests/$guest/
-
-echo -n erasing previous /etc/fstab from template...
-cat > lala/etc/fstab <<EOF && echo done
-/dev/xvda1 / btrfs rw,noatime,nodiratime,space_cache=v2,compress=lzo,discard 0 0
-devpts /dev/pts devpts gid=5,mode=620 0 0
-tmpfs /dev/shm tmpfs defaults 0 0
-proc /proc proc defaults 0 0
-EOF
 
 echo -n hostname $short ...
 echo $short > lala/etc/HOSTNAME && echo done
@@ -57,8 +56,8 @@ for dns in dns1 dns2 dns3 dns4; do
 	[[ -n ${!dns} ]] && echo ${!dns} $dns >> lala/etc/hosts
 done; unset dns
 
-# here sourceing the vars themselves
-echo -n erasing previous /etc/resolv.conf from tpl...
+# here sourcing the vars themselves
+echo -n erasing previous /etc/resolv.conf from template...
 rm -f lala/etc/resolv.conf
 for dns in $dns1 $dns2 $dns3 $dns4; do
 	echo nameserver $dns >> lala/etc/resolv.conf
@@ -107,6 +106,29 @@ EOF
 chmod 700 lala/root/.ssh/
 chmod 600 lala/root/.ssh/authorized_keys
 
+#
+# override defaults from template
+#
+
+echo -n override template fstab ...
+cat > lala/etc/fstab <<EOF && echo done
+/dev/xvda1 / btrfs defaults,noatime,nodiratime,space_cache=v2,compress=lzo,discard 0 0
+devpts /dev/pts devpts gid=5,mode=620 0 0
+tmpfs /dev/shm tmpfs defaults 0 0
+proc /proc proc defaults 0 0
+EOF
+# for f2fs
+# boot system with additiona kernel argument rootflags=atgc
+#/dev/xvda1 / f2fs defaults,noatime,nodiratime,compress_algorithm=lz4,compress_extension=*,compress_chksum,atgc,gc_merge 1 1
+
+# possible w/o tmem
+#echo disable boot-time kernel modules
+#chmod -x lala/etc/rc.d/rc.modules
+#chmod -x lala/etc/rc.d/rc.modules.local
+
+echo reduce buffer/cache usage
+echo vm.vfs_cache_pressure = 200 > lala/etc/sysctl.d/reduce-buffer-cache.conf
+
 echo -n un-mounting...
 umount /data/guests/$guest/lala/ && echo done
 rmdir /data/guests/$guest/lala/
@@ -117,12 +139,15 @@ kernel = "/data/kernels/5.2.21.domureiser4.vmlinuz"
 root = "/dev/xvda1 ro console=hvc0 mitigations=off"
 #extra = "init=/bin/bash"
 name = "$guest"
-memory = 1024
 vcpus = 2
+memory = 1024
 disk = ['phy:/dev/drbd/by-res/$guest/0,xvda1,w']
 vif = [ 'bridge=guestbr0, vifname=$guest' ]
 type = "pvh"
 EOF
+#root = "/dev/xvda1 ro console=hvc0 mitigations=off rootflags=atgc"
+#memory = 512
+#maxmem = 7168
 
 #echo starting guest $guest
 #xl create /data/guests/$guest/$guest && echo -e \\nGUEST $guest HAS BEEN STARTED

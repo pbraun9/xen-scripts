@@ -20,6 +20,11 @@ case $tpl in
 		node2=pmr2
 		butter=1
 		;;
+	slackf2fs)
+		node1=pmr3
+		node2=pmr1
+		butter=0
+		;;
 	bullseye)
 		node1=pmr2
 		node2=pmr3
@@ -33,6 +38,7 @@ case $tpl in
 	netbsd-current)
 		node1=pmr1
 		node2=pmr2
+		butter=0
 		;;
 	*)
 		bomb on which nodes to find snapshot origin for template $tpl?
@@ -52,19 +58,20 @@ echo
 echo CREATE THIN SNAPSHOT FROM $tpl
 echo
 
-echo $node1
+echo -n creating thin/$guest on $node1 ...
 #dsh -e -w $node1 -s /root/xen/remote-check-lv.bash
 ssh $node1 "lvcreate --snapshot -n $guest \
 	--setactivationskip n --ignoreactivationskip \
-	thin/$tpl >> /var/log/lvm.log 2>&1 && echo thin/$tpl up on $node1"
+	thin/$tpl >> /var/log/lvm.log 2>&1 && echo done"
 	# --setautoactivation y
-echo
+#echo
 
-echo $node2
+echo -n creating thin/$guest on $node2 ...
 #dsh -e -w $node2 -s /root/xen/remote-check-lv.bash
 ssh $node2 "lvcreate --snapshot -n $guest \
 	--setactivationskip n --ignoreactivationskip \
-	thin/$tpl >> /var/log/lvm.log 2>&1 && echo thin/$tpl up on $node2"
+	thin/$tpl >> /var/log/lvm.log 2>&1 && echo done"
+
 echo
 
 #ssh $node1 lvs -o+discards thin/$guest

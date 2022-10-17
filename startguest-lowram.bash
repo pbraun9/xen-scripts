@@ -1,17 +1,24 @@
 #!/bin/bash
 set -e
 
-function support {
+# memory allocated to guests at boot-time
+memory=1024
+
+function bomb {
+	echo Error: $@
+	exit 1
+}
+
+function is_maintenance {
 	cat <<EOF
 
 	Cluster state not optimal - node $node is under maintenance
 
-	Please try again in 15 minutes or reach out to <support@angrycow.ru>.
+	Please try again in 15 minutes
 
 EOF
 	exit 1
 }
-# Reach out to support team for feedback, feature requests and bug reports
 
 export CLUSTER=/root/dsh.conf
 
@@ -26,17 +33,23 @@ alive=`dsh -e -g xen "xl list | grep -E \"^$guest[[:space:]]+\"" | cut -f1 -d:`
 
 # check cluster state is optimal
 for node in $nodes; do
-	ssh $node "[[ -d /data/guesta/ ]]" || support
+	ssh $node ls -1d /data/templates/ >/dev/null 2>&1 || is_maintenance
 done; unset node
 
 guestpath=/data/guests/$guest
 conf=$guestpath/$guest
 [[ ! -f $conf ]] && echo $conf cannot be found && exit 1
 
-freeram=`dsh -e -g pmr "xl info | grep ^free_memory" | sort -k 3 | tail -1`
+# available memory left hence we look for the greatest amount
+freeram=`dsh -e -g pmr "xl info | grep ^free_memory" | sort -V -k3 -t: | tail -1`
 free=`echo $freeram | awk '{print $NF}'`
 node=`echo $freeram | cut -f1 -d:`
 echo "least used RAM node is $node ($free M free)"
+
+[[ -z $free ]] && bomb failed to define \$free
+[[ -z $node ]] && bomb failed to define \$node
+
+(( free < memory )) && bomb not enough memory available on any node of the cluster \($free on $node\)
 
 ssh $node "xl create $conf"
 echo -e \\nGUEST $guest HAS BEEN STARTED ON NODE $node\\n
