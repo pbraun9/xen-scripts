@@ -58,6 +58,9 @@ echo
 echo CREATE THIN SNAPSHOT FROM $tpl
 echo
 
+ssh $node1 ls /dev/thin/$guest 2>/dev/null && bomb thin/$guest already exists on $node1
+ssh $node2 ls /dev/thin/$guest 2>/dev/null && bomb thin/$guest already exists on $node2
+
 echo -n creating thin/$guest on $node1 ...
 #dsh -e -w $node1 -s /root/xen/remote-check-lv.bash
 ssh $node1 "lvcreate --snapshot -n $guest \
