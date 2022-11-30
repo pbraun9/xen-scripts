@@ -2,9 +2,7 @@
 set -e
 
 function usage {
-	cat <<-EOF
-	usage: $0 guestX guestY
-	EOF
+	echo usage: ${0##*/} guestX guestY
 	exit 1
 }
 
@@ -23,11 +21,8 @@ mv $guestX/ $guestY/ && echo done
 
 echo -n updating the pathes and vif names...
 [[ ! -f $guestY/$guestX ]] && echo $guestX config not found && exit 1
-sed -r "
-s#name = \"$guestX\"#name = \"$guestY\"#;
-s#guests/$guestX/$guestX\.#guests/$guestY/$guestY.#;
-s#vifname=$guestX\.#vifname=$guestY.#
-" $guestY/$guestX > $guestY/$guestY && rm -f $guestY/$guestX && echo done
+sed -r "s/$guestX/$guestY/" $guestY/$guestX > $guestY/$guestY \
+	&& rm -f $guestY/$guestX && echo done
 
 echo renaming additional files:
 cd $guestY/
