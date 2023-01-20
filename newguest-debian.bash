@@ -24,23 +24,30 @@ dec2ip
 echo DEBIAN/UBUNTU SYSTEM PREPARATION
 echo
 
-# drbd resource is possibly diskless
-echo -n mounting butterfs lzo...
+# note drbd resource is possibly diskless
+
 mkdir -p /data/guests/$guest/lala/
-mount -o compress=lzo /dev/drbd/by-res/$guest/0 /data/guests/$guest/lala/
+
+echo -n mounting reiser4 wa...
+mount -o async,noatime,nodiratime,txmod=wa,discard /dev/drbd/by-res/$guest/0 /data/guests/$guest/lala/ \
+	&& echo done || bomb failed to mount reiser4 for $guest
+
+#echo -n mounting butterfs lzo...
+#mount -o compress=lzo /dev/drbd/by-res/$guest/0 /data/guests/$guest/lala/
 # (already resized)
+
 echo
 
 # TODO use absolute path instead
 cd /data/guests/$guest/
 
-echo -n erasing previous /etc/fstab from template...
-cat > lala/etc/fstab <<EOF && echo done
-/dev/xvda1 / btrfs rw,noatime,nodiratime,space_cache=v2,compress=lzo,discard 0 0
-devpts /dev/pts devpts gid=5,mode=620 0 0
-tmpfs /tmp tmpfs rw,nodev,nosuid,noatime,relatime 0 0
-proc /proc proc defaults 0 0
-EOF
+#echo -n erasing previous /etc/fstab from template...
+#cat > lala/etc/fstab <<EOF && echo done
+#/dev/xvda1 / btrfs rw,noatime,nodiratime,space_cache=v2,compress=lzo,discard 0 0
+#devpts /dev/pts devpts gid=5,mode=620 0 0
+#tmpfs /tmp tmpfs rw,nodev,nosuid,noatime,relatime 0 0
+#proc /proc proc defaults 0 0
+#EOF
 
 echo -n hostname $short ...
 echo $short > lala/etc/hostname && echo done
@@ -65,13 +72,13 @@ cat > lala/etc/hosts <<EOF && echo done
 ff02::1         ip6-allnodes
 ff02::2         ip6-allrouters
 
-${ip%/*} $short.localdomain $short
-
-$gw gw.localdomain gw
-$dns1	dns1.localdomain dns1
-$dns2	dns2.localdomain dns2
-$dns3	dns3.localdomain dns3
+${ip%/*} $short
+$gw gw
+$dns1 dns1
+$dns2 dns2
+$dns3 dns3
 EOF
+#$dns0 dns0
 
 # here sourceing the vars themselves
 #echo -n erasing previous /etc/resolv.conf from tpl...
@@ -81,11 +88,11 @@ EOF
 #done && echo done; unset dns
 echo -n writing resolv.conf ...
 cat > lala/etc/resolv.conf <<EOF && echo done
-nameserver 10.1.255.254
 nameserver 10.1.255.253
 nameserver 10.1.255.252
 nameserver 10.1.255.251
 EOF
+#nameserver 10.1.255.254
 
 echo -n network/interfaces ...
 cat > lala/etc/network/interfaces <<EOF && echo done
@@ -121,14 +128,13 @@ chmod 700 lala/root/.ssh/
 chmod 600 lala/root/.ssh/authorized_keys
 
 # ADDITIONAL FIXUP - template out of sync
-echo -n writing sources.list ...
-cat > lala/etc/apt/sources.list <<EOF && echo done
-deb http://ftp.ro.debian.org/debian/ bullseye main contrib non-free
-deb http://ftp.ro.debian.org/debian/ bullseye-updates main contrib non-free
-deb http://ftp.ro.debian.org/debian/ bullseye-backports main contrib non-free
-deb http://security.debian.org/debian-security bullseye-security main contrib non-free
-
-EOF
+#echo -n writing sources.list ...
+#cat > lala/etc/apt/sources.list <<EOF && echo done
+#deb http://ftp.ro.debian.org/debian/ bullseye main contrib non-free
+#deb http://ftp.ro.debian.org/debian/ bullseye-updates main contrib non-free
+#deb http://ftp.ro.debian.org/debian/ bullseye-backports main contrib non-free
+#deb http://security.debian.org/debian-security bullseye-security main contrib non-free
+#EOF
 
 echo -n un-mounting...
 umount /data/guests/$guest/lala/ && echo done
@@ -137,7 +143,7 @@ rmdir /data/guests/$guest/lala/
 echo -n writing guest config...
 cat > /data/guests/$guest/$guest <<EOF && echo done
 kernel = "/data/kernels/5.2.21.domureiser4.vmlinuz"
-root = "/dev/xvda1 ro console=hvc0 net.ifnames=0 biosdevname=0 netcfg/do_not_use_netplan=true mitigations=off"
+root = "/dev/xvda1 ro console=hvc0 net.ifnames=0 biosdevname=0 mitigations=off"
 #extra = "init=/bin/bash"
 name = "$guest"
 memory = 1024
@@ -146,6 +152,7 @@ disk = ['phy:/dev/drbd/by-res/$guest/0,xvda1,w']
 vif = [ 'bridge=guestbr0, vifname=$guest' ]
 type = "pvh"
 EOF
+# netcfg/do_not_use_netplan=true
 
 #echo starting guest $guest
 #xl create /data/guests/$guest/$guest && echo -e \\nGUEST $guest HAS BEEN STARTED

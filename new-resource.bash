@@ -15,35 +15,31 @@ guest=$3
 device=/dev/drbd$minor
 
 case $tpl in
-	slack150)
+	debian*)
 		node1=pmr1
 		node2=pmr2
-		butter=1
-		;;
-	slackf2fs)
-		node1=pmr3
-		node2=pmr1
 		butter=0
 		;;
-	bullseye)
+	slack*)
 		node1=pmr2
 		node2=pmr3
-		butter=1
+		butter=0
 		;;
-	jammy)
+	netbsd*)
 		node1=pmr3
 		node2=pmr1
-		butter=1
-		;;
-	netbsd-current)
-		node1=pmr1
-		node2=pmr2
 		butter=0
 		;;
 	*)
 		bomb on which nodes to find snapshot origin for template $tpl?
 		;;
 esac
+
+	#jammy)
+	#	node1=pmr3
+	#	node2=pmr1
+	#	butter=0
+	#	;;
 
 # assuming decent guest id
 # 0: guest configs on shared disk file-system
@@ -63,17 +59,12 @@ ssh $node2 ls /dev/thin/$guest 2>/dev/null && bomb thin/$guest already exists on
 
 echo -n creating thin/$guest on $node1 ...
 #dsh -e -w $node1 -s /root/xen/remote-check-lv.bash
-ssh $node1 "lvcreate --snapshot -n $guest \
-	--setactivationskip n --ignoreactivationskip \
-	thin/$tpl >> /var/log/lvm.log 2>&1 && echo done"
+ssh $node1 "lvcreate --snapshot -n $guest --setactivationskip n --ignoreactivationskip thin/$tpl >> /var/log/dnc.log 2>&1 && echo done"
 	# --setautoactivation y
-#echo
 
 echo -n creating thin/$guest on $node2 ...
 #dsh -e -w $node2 -s /root/xen/remote-check-lv.bash
-ssh $node2 "lvcreate --snapshot -n $guest \
-	--setactivationskip n --ignoreactivationskip \
-	thin/$tpl >> /var/log/lvm.log 2>&1 && echo done"
+ssh $node2 "lvcreate --snapshot -n $guest --setactivationskip n --ignoreactivationskip thin/$tpl >> /var/log/dnc.log 2>&1 && echo done"
 
 echo
 
