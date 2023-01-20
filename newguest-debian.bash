@@ -21,7 +21,6 @@ dec2ip
 [[ -z $ip ]] && bomb missing \$ip
 [[ -z $gw ]] && bomb missing \$gw
 
-echo
 echo DEBIAN/UBUNTU SYSTEM PREPARATION
 echo
 
