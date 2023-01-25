@@ -7,7 +7,7 @@
 guest=$1
 
 source /etc/dnc.conf
-source newguest-functions.bash
+source /usr/local/lib/dnclib.bash
 
 [[ -z $nodes ]] && echo \$nodes not defined && exit 1
 
@@ -18,8 +18,7 @@ if [[ -n `mount | grep guests/$guest/` ]]; then
 fi
 
 # self-verbose
-/root/xen/shutdown-guest.bash $guest
-echo
+dnc-shutdown-guest.bash $guest
 
 echo -n clean-up guest config...
 rm -rf /data/guests/$guest/ && echo done

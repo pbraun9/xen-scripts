@@ -11,8 +11,10 @@ name=$guest
 short=${name%%\.*}
 
 source /etc/dnc.conf
-source /root/xen/newguest-functions.bash
-source /root/xen/newguest-include-checks.bash
+source /usr/local/lib/dnclib.bash
+
+# check drbd/lvm resource status
+source /usr/local/lib/dnclib-checks.bash
 
 # gw and friends got sourced by dnc.conf
 # but guest ip gets eveluated by dec2ip function
@@ -154,5 +156,5 @@ EOF
 #echo up > /data/guests/$guest/state
 #echo
 
-/root/xen/startguest-lowram.bash $guest
+dnc-startguest-lowram.bash $guest
 

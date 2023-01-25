@@ -17,8 +17,10 @@ name=$guest
 short=${name%%\.*}
 
 source /etc/dnc.conf
-source /root/xen/newguest-functions.bash
-source /root/xen/newguest-include-checks.bash
+source /usr/local/lib/dnclib.bash
+
+# check drbd/lvm resource status
+source /usr/local/lib/dnclib-checks.bash
 
 # gw and friends got sourced by dnc.conf
 # but guest ip gets eveluated by dec2ip function
@@ -117,11 +119,13 @@ vif = [ 'bridge=guestbr0,vifname=$guest.0',
         'bridge=guestbr0,vifname=$guest.1']
 #type = "pvh"
 EOF
+echo
 
 # resource should be fully up and running before trying to start the guest on it
 #Error: Can't open /dev/drbd/by-res/dnc16/0. Read-only file system.
 echo starting guest $guest
 xl create /data/guests/$guest/$guest && echo -e \\nGUEST $guest HAS BEEN STARTED
-echo up > /data/guests/$guest/state
 echo
+
+#echo up > /data/guests/$guest/state
 

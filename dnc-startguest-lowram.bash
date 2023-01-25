@@ -20,6 +20,8 @@ EOF
 	exit 1
 }
 
+#echo powering on guest $guest
+
 export CLUSTER=/root/dsh.conf
 
 [[ -z $1 ]] && echo "${0##*/} <GUEST-NAME>" && exit 1
@@ -44,14 +46,19 @@ conf=$guestpath/$guest
 freeram=`dsh -e -g pmr "xl info | grep ^free_memory" | sort -V -k3 -t: | tail -1`
 free=`echo $freeram | awk '{print $NF}'`
 node=`echo $freeram | cut -f1 -d:`
-echo "least used RAM node is $node ($free M free)"
+echo "node with least used RAM is $node ($free M free)"
 
 [[ -z $free ]] && bomb failed to define \$free
 [[ -z $node ]] && bomb failed to define \$node
 
 (( free < memory )) && bomb not enough memory available on any node of the cluster \($free on $node\)
 
-ssh $node "xl create $conf"
-echo -e \\nGUEST $guest HAS BEEN STARTED ON NODE $node\\n
-echo up > $guestpath/state
+# shows Parsing config from /data/guests/dnc1033/dnc1033
+ssh $node xl create $conf
+echo
+
+echo " GUEST $guest HAS BEEN STARTED ON NODE $node"
+echo
+
+#echo up > $guestpath/state
 

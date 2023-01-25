@@ -17,6 +17,8 @@ conf=$guestpath/$guest
 (( id = RANDOM % 3 + 1 ))
 node=${hostprefix}$id
 
-ssh $node "xl create $conf" && echo GUEST $guest HAS BEEN STARTED ON NODE $node
-ssh $node "echo up > $guestpath/state"
+ssh $node xl create $conf && echo -e \\nGUEST $guest HAS BEEN STARTED ON NODE $node
+echo
+
+#echo up > $guestpath/state
 

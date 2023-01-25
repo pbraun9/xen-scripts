@@ -3,7 +3,7 @@
 debug=0
 
 source /etc/dnc.conf
-source /root/xen/newguest-functions.bash
+source /usr/local/lib/dnclib.bash
 
 # network is 10.1.0.0/16: 10.1.0.1 - 10.1.4.255
 # guestid matches tcp port which starts at 1024

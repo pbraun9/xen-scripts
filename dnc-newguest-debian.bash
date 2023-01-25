@@ -11,8 +11,10 @@ name=$guest
 short=${name%%\.*}
 
 source /etc/dnc.conf
-source /root/xen/newguest-functions.bash
-source /root/xen/newguest-include-checks.bash
+source /usr/local/lib/dnclib.bash
+
+# check drbd/lvm resource status
+source /usr/local/lib/dnclib-checks.bash
 
 # gw and friends got sourced by dnc.conf
 # but guest ip gets eveluated by dec2ip function
@@ -21,7 +23,7 @@ dec2ip
 [[ -z $ip ]] && bomb missing \$ip
 [[ -z $gw ]] && bomb missing \$gw
 
-echo DEBIAN/UBUNTU SYSTEM PREPARATION
+echo DEBIAN SYSTEM PREPARATION
 echo
 
 # note drbd resource is possibly diskless
@@ -153,10 +155,10 @@ vif = [ 'bridge=guestbr0, vifname=$guest' ]
 type = "pvh"
 EOF
 # netcfg/do_not_use_netplan=true
+echo
 
 #echo starting guest $guest
 #xl create /data/guests/$guest/$guest && echo -e \\nGUEST $guest HAS BEEN STARTED
 #echo up > /data/guests/$guest/state
-
-/root/xen/startguest-lowram.bash $guest
+dnc-startguest-lowram.bash $guest
 

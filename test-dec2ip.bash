@@ -5,7 +5,7 @@ debug=1
 [[ -z $1 ]] && echo ${0##*/} \<guest id\> && exit 1
 
 source /etc/dnc.conf
-source /root/xen/newguest-functions.bash
+source /usr/local/lib/dnclib.bash
 
 echo
 guestid=$1
