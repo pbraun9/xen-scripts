@@ -6,14 +6,24 @@ function usage {
 	exit 1
 }
 
+function log {
+	time=`date +%Y-%m-%d-%H:%M:%S`
+
+	echo $time - info: $@ >> /var/tmp/dnc.log
+
+	unset time
+}
+
 function bomb {
-	time=`date +%s`
+	time=`date +%Y-%m-%d-%H:%M:%S`
 
-	#echo $time - user=$user guestid=$guestid minor=$minor guest=$guest name=$name >> /var/log/dnc.error.log
-	echo $time - error: $@ >> /var/log/dnc.error.log
-
+	# show the error live before logging - in case cannot write to log file
+	echo
 	echo error: $@
 	echo
+
+	#echo $time - user=$user guestid=$guestid minor=$minor guest=$guest name=$name >> /var/log/dnc.error.log
+	echo $time - error: $@ >> /var/tmp/dnc.error.log
 
 	unset time
 	exit 1
