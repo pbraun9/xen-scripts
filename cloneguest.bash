@@ -16,8 +16,8 @@ cd /data/guests/
 [[ -d $guestY/ ]] && echo $guestY/ already exists! && exit 1
 [[ -f $guestY ]] && echo $guestY conf already exists but as a file?! && exit 1
 
-echo -n renaming $guestX/ to $guestY/ ...
-mv -i $guestX/ $guestY/ && echo done
+echo -n cloning $guestX/ to $guestY/ ...
+cp -R --sparse=always $guestX/ $guestY/ && echo done
 
 cd $guestY/
 
